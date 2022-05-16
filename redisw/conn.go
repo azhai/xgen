@@ -80,7 +80,7 @@ func NewRedisConnDb(cfg dialect.ConnConfig, db int) (redis.Conn, error) {
 		opts = append(opts, redis.DialPassword(cfg.Password))
 	}
 	if db >= 0 {
-		opts = append(opts, redis.Database(db))
+		opts = append(opts, redis.DialDatabase(db))
 	}
 	return redis.DialURL(cfg.GetDSN(false), opts...)
 }
