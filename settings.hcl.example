@@ -1,0 +1,41 @@
+debug = true
+
+reverse "golang" {
+    output_dir = "./models"
+    name_space = "github.com/azhai/xgen/models"
+    mixin_dir = "./xquery"
+    mixin_ns = "github.com/azhai/xgen/xquery"
+    multiple_files = false
+    table_prefix = "*"
+    include_tables = ["t_*"]
+}
+
+app "xgen" {
+    port = 8090
+    log_level = "debug"
+    log_dir = "./logs"
+}
+
+repeat "mysql" {
+    key = "default"
+    db_prefix = ""
+    db_names = ["test2"]
+}
+
+conn "mysql" "default" {
+    host = "127.0.0.1"
+    database = "test"
+    username = "dba"
+    password = "pass"
+    log_file = "./logs/$KEY.log"
+}
+
+conn "redis" "cache" {
+    host = "127.0.0.1"
+    database = 0
+    password = ""
+}
+
+conn "flashdb" "embed" {
+    path = "/tmp/flashdb"
+}
