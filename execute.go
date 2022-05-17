@@ -170,7 +170,7 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 		filename := r.GetOutFileName(CONN_FILE_NAME)
 		formatter := r.GetFormatter()
 		if _, err = formatter(filename, codeText); err == nil {
-			err = ApplyModelMixins(r.target, verbose)
+			err = ApplyModelMixins(r.target, r.currOutDir, verbose)
 		}
 	}
 	return err
@@ -263,7 +263,7 @@ func FilterTables(tables []*schemas.Table, includes, excludes []string) []*schem
 }
 
 // ApplyModelMixins 将已知的Mixin嵌入到匹配的Model中
-func ApplyModelMixins(target ReverseConfig, verbose bool) error {
+func ApplyModelMixins(target ReverseConfig, currDir string, verbose bool) error {
 	if target.MixinDir != "" {
 		files, _ := rewrite.FindFiles(target.MixinDir, ".go")
 		for filename := range files {
@@ -273,7 +273,7 @@ func ApplyModelMixins(target ReverseConfig, verbose bool) error {
 			_ = rewrite.AddFormerMixins(filename, target.MixinNS, "")
 		}
 	}
-	files, _ := rewrite.FindFiles(target.OutputDir, ".go")
+	files, _ := rewrite.FindFiles(currDir, ".go")
 	var err error
 	for filename := range files {
 		_err := rewrite.ParseAndMixinFile(filename, verbose)
