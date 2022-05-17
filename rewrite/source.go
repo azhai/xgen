@@ -145,7 +145,7 @@ func (cs *CodeSource) GetFieldCode(node *DeclNode, i int) string {
 	return strings.TrimSpace(ffcode)
 }
 
-// GetComment
+// GetComment 获取注释
 func (cs *CodeSource) GetComment(c *ast.CommentGroup, trim bool) string {
 	if c == nil {
 		return ""

@@ -17,6 +17,16 @@ func GetNameList(ids []*ast.Ident) (names []string) {
 	return
 }
 
+// ReduceComment
+func ReduceComment(comm string) string {
+	if comm == "" || len(comm) > 200 {
+		return ""
+	}
+	comm = strings.ReplaceAll(comm, "\r", "")
+	comm = strings.ReplaceAll(comm, "\n", " ")
+	return comm
+}
+
 // TrimComment 去掉注释两边的空白
 func TrimComment(c string) string {
 	c = strings.TrimSpace(c)

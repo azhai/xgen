@@ -12,45 +12,114 @@ import (
 
 const MODEL_EXTENDS = "`json:\",inline\" xorm:\"extends\"`"
 
-var (
-	substituteNames  = []string{"xquery.TimeMixin", "xquery.NestedMixin"}
-	substituteModels = map[string]*ModelSummary{
-		"xquery.TimeMixin": {
-			Name:   "xquery.TimeMixin",
-			Import: "github.com/azhai/xgen/xquery",
-			Alias:  "",
-			FieldLines: []string{
-				"CreatedAt time.Time `json:\"created_at\" xorm:\"created comment('创建时间') TIMESTAMP\"`       // 创建时间",
-				"UpdatedAt time.Time `json:\"updated_at\" xorm:\"updated comment('更新时间') TIMESTAMP\"`       // 更新时间",
-				"DeletedAt time.Time `json:\"deleted_at\" xorm:\"deleted comment('删除时间') index TIMESTAMP\"` // 删除时间",
-			},
-		},
-		"xquery.NestedMixin": {
-			Name:   "xquery.NestedMixin",
-			Import: "github.com/azhai/xgen/xquery",
-			Alias:  "",
-			FieldLines: []string{
-				"Lft   int `json:\"lft\" xorm:\"notnull default 0 comment('左边界') INT(10)\"`           // 左边界",
-				"Rgt   int `json:\"rgt\" xorm:\"notnull default 0 comment('右边界') index INT(10)\"`     // 右边界",
-				"Depth int `json:\"depth\" xorm:\"notnull default 1 comment('高度') index TINYINT(3)\"` // 高度",
-			},
+var globaltComposer = GlobaltComposer()
+
+type Composer struct {
+	subNames  []string
+	subModels map[string]*ModelSummary
+	Global    *Composer
+}
+
+func NewComposer() *Composer {
+	return &Composer{
+		subModels: make(map[string]*ModelSummary),
+		Global:    globaltComposer,
+	}
+}
+
+// GlobalComposer 默认的Composer，带有xquery的两个mixins
+func GlobaltComposer() *Composer {
+	cps := &Composer{
+		subNames:  []string{"xquery.NestedMixin", "xquery.TimeMixin"},
+		subModels: make(map[string]*ModelSummary),
+	}
+	cps.subModels["xquery.NestedMixin"] = &ModelSummary{
+		Name:   "xquery.NestedMixin",
+		Import: "github.com/azhai/xgen/xquery",
+		Alias:  "",
+		FieldLines: []string{
+			"Lft   int `json:\"lft\" xorm:\"notnull default 0 comment('左边界') INT(10)\"`           // 左边界",
+			"Rgt   int `json:\"rgt\" xorm:\"notnull default 0 comment('右边界') index INT(10)\"`     // 右边界",
+			"Depth int `json:\"depth\" xorm:\"notnull default 1 comment('高度') index TINYINT(3)\"` // 高度",
 		},
 	}
-)
+	cps.subModels["xquery.TimeMixin"] = &ModelSummary{
+		Name:   "xquery.TimeMixin",
+		Import: "github.com/azhai/xgen/xquery",
+		Alias:  "",
+		FieldLines: []string{
+			"CreatedAt time.Time `json:\"created_at\" xorm:\"created comment('创建时间') TIMESTAMP\"`       // 创建时间",
+			"UpdatedAt time.Time `json:\"updated_at\" xorm:\"updated comment('更新时间') TIMESTAMP\"`       // 更新时间",
+			"DeletedAt time.Time `json:\"deleted_at\" xorm:\"deleted comment('删除时间') index TIMESTAMP\"` // 删除时间",
+		},
+	}
+	return cps
+}
+
+// RegisterGlobalSubstitute 注册可替换Model
+func (c *Composer) RegisterGlobalSubstitute(sub *ModelSummary) {
+	c.Global.RegisterSubstitute(sub)
+}
 
 // RegisterSubstitute 注册可替换Model
-func RegisterSubstitute(sub *ModelSummary) {
+func (c *Composer) RegisterSubstitute(sub *ModelSummary) {
 	if sub != nil && !sub.IsExists {
-		substituteModels[sub.Name] = sub
-		substituteNames = append(substituteNames, sub.Name)
+		c.subModels[sub.Name] = sub
+		c.subNames = append(c.subNames, sub.Name)
 	}
 }
 
 // RemoveSubstitute 删除可替换Model
-func RemoveSubstitute(name string) {
-	if _, ok := substituteModels[name]; ok {
-		substituteModels[name] = nil
+func (c *Composer) RemoveSubstitute(name string) {
+	if _, ok := c.subModels[name]; ok {
+		c.subModels[name] = nil
 	}
+}
+
+// RemoveSubstitute 删除可替换Model
+func (c *Composer) SubstituteSummary(summary *ModelSummary, verbose bool) []*ModelSummary {
+	var subs []*ModelSummary
+	if c.Global != nil && len(c.Global.subNames) > 0 {
+		subs = c.Global.SubstituteSummary(summary, verbose)
+	}
+	for _, subName := range c.subNames {
+		if subName == summary.Name {
+			continue // 不要替换自己
+		}
+		if sub, ok := c.subModels[subName]; ok {
+			if ScanAndUseMixins(summary, sub, verbose) {
+				subs = append(subs, sub)
+			}
+		}
+	}
+	return subs
+}
+
+// AddFormerMixins
+func AddFormerMixins(fileName, nameSpace, alias string) []string {
+	cp, err := NewFileParser(fileName)
+	if err != nil {
+		return nil
+	}
+	var mixinNames []string
+	for _, node := range cp.AllDeclNode("type") {
+		if len(node.Fields) == 0 {
+			continue
+		}
+		name := node.GetName()
+		if !strings.HasSuffix(name, "Mixin") {
+			continue
+		}
+		summary := &ModelSummary{Import: nameSpace, Alias: alias}
+		if alias == "" {
+			alias = cp.GetPackage()
+		}
+		summary.Name = fmt.Sprintf("%s.%s", alias, name)
+		_ = summary.ParseFields(cp, node)
+		globaltComposer.RegisterSubstitute(summary)
+		mixinNames = append(mixinNames, summary.Name)
+	}
+	return mixinNames
 }
 
 // ModelSummary Model摘要
@@ -117,7 +186,7 @@ func (s *ModelSummary) ParseFields(cp *CodeParser, node *DeclNode) int {
 		}
 		comm := cp.GetComment(f.Comment, true)
 		if len(comm) > 0 {
-			code += " //" + comm
+			code += " //" + ReduceComment(comm)
 		}
 		s.FieldLines[i] = code
 	}
@@ -172,33 +241,6 @@ func ReplaceSummary(summary, sub *ModelSummary) *ModelSummary {
 	return summary
 }
 
-// AddFormerMixins
-func AddFormerMixins(fileName, nameSpace, alias string) []string {
-	cp, err := NewFileParser(fileName)
-	if err != nil {
-		return nil
-	}
-	var mixinNames []string
-	for _, node := range cp.AllDeclNode("type") {
-		if len(node.Fields) == 0 {
-			continue
-		}
-		name := node.GetName()
-		if !strings.HasSuffix(name, "Mixin") {
-			continue
-		}
-		summary := &ModelSummary{Import: nameSpace, Alias: alias}
-		if alias == "" {
-			alias = cp.GetPackage()
-		}
-		summary.Name = fmt.Sprintf("%s.%s", alias, name)
-		_ = summary.ParseFields(cp, node)
-		RegisterSubstitute(summary)
-		mixinNames = append(mixinNames, summary.Name)
-	}
-	return mixinNames
-}
-
 // ScanAndUseMixins
 func ScanAndUseMixins(summary, sub *ModelSummary, verbose bool) (needImport bool) {
 	sted := sub.GetSortedFeatures()
@@ -227,7 +269,7 @@ func ScanAndUseMixins(summary, sub *ModelSummary, verbose bool) (needImport bool
 }
 
 // ParseAndMixinFile
-func ParseAndMixinFile(fileName string, verbose bool) error {
+func ParseAndMixinFile(cps *Composer, fileName string, verbose bool) error {
 	cp, err := NewFileParser(fileName)
 	if err != nil {
 		if verbose {
@@ -251,25 +293,18 @@ func ParseAndMixinFile(fileName string, verbose bool) error {
 		if summary.Isomorph() {
 			summary.IsExists = true
 		} else {
-			for _, subName := range substituteNames {
-				if subName == summary.Name {
-					continue // 不要替换自己
-				}
-				if sub, ok := substituteModels[subName]; ok {
-					if ScanAndUseMixins(summary, sub, verbose) {
-						imports[sub.Import] = sub.Alias
-					}
-				}
+			for _, sub := range cps.SubstituteSummary(summary, verbose) {
+				imports[sub.Import] = sub.Alias
 			}
 		}
-		RegisterSubstitute(summary)
+		cps.RegisterSubstitute(summary)
 		if summary.IsChanged {
 			changed = true
 			ReplaceModelFields(cp, node, summary)
 		}
 	}
 	if verbose {
-		fmt.Println(fileName, " changed: ", changed, "\n")
+		fmt.Println(fileName, " changed: ", changed)
 	}
 	if changed { // 加入相关的 mixin imports 并美化代码
 		cs := cp.CodeSource

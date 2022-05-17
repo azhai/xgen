@@ -15,14 +15,16 @@ const (
 )
 
 var (
-	interActive bool // 交互模式
+	interActive     bool // 交互模式
+	onlyApplyMixins bool // 仅应用Mixins
 )
 
 // OptionConfig 自定义选项，一部分是命令行输入，一部分是配置文件解析
 type OptionConfig struct {
-	InterActive bool
-	Verbose     bool
-	Version     string `hcl:"version,optional" json:"version,omitempty"`
+	InterActive     bool
+	OnlyApplyMixins bool
+	Verbose         bool
+	Version         string `hcl:"version,optional" json:"version,omitempty"`
 }
 
 func init() {
@@ -32,6 +34,7 @@ func init() {
 	}
 
 	flag.BoolVar(&interActive, "i", false, "使用交互模式")
+	flag.BoolVar(&onlyApplyMixins, "m", false, "仅应用Mixins")
 	config.Setup()
 }
 
@@ -46,6 +49,7 @@ func GetOptions() (*OptionConfig, *config.RootConfig) {
 		options.Version = VERSION
 	}
 	options.InterActive = interActive
+	options.OnlyApplyMixins = onlyApplyMixins
 	if options.Verbose = config.Verbose(); options.Verbose {
 		pp.Println(options)
 	}

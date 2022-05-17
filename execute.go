@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/azhai/xgen/dialect"
@@ -76,6 +77,21 @@ func (c ReverseConfig) GetTemplateName(name string) string {
 	}
 }
 
+func (c ReverseConfig) PrepareMixins() (mixinNames []string) {
+	if c.MixinDir == "" {
+		return
+	}
+	files, _ := rewrite.FindFiles(c.MixinDir, ".go")
+	for filename := range files {
+		if strings.HasSuffix(filename, "_test.go") {
+			continue
+		}
+		newNames := rewrite.AddFormerMixins(filename, c.MixinNS, "")
+		mixinNames = append(mixinNames, newNames...)
+	}
+	return
+}
+
 // Reverser model反转器
 type Reverser struct {
 	currOutDir string
@@ -85,6 +101,7 @@ type Reverser struct {
 
 // NewGoReverser 创建Golang反转器
 func NewGoReverser(target ReverseConfig) *Reverser {
+	target.PrepareMixins()
 	return &Reverser{lang: golang, target: target}
 }
 
@@ -155,7 +172,7 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 		if err != nil {
 			fmt.Println(err)
 		}
-		tableSchemas = FilterTables(tableSchemas, r.target.IncludeTables, r.target.ExcludeTables)
+		tableSchemas = FilterTables(tableSchemas, r.target.IncludeTables, r.target.ExcludeTables, 4)
 		if len(tableSchemas) == 0 {
 			return nil
 		}
@@ -170,7 +187,7 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 		filename := r.GetOutFileName(CONN_FILE_NAME)
 		formatter := r.GetFormatter()
 		if _, err = formatter(filename, codeText); err == nil {
-			err = ApplyModelMixins(r.target, r.currOutDir, verbose)
+			err = ApplyDirMixins(r.currOutDir, verbose)
 		}
 	}
 	return err
@@ -248,35 +265,33 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 }
 
 // FilterTables 按照ExcludeTables和IncludeTables配置过滤数据表
-func FilterTables(tables []*schemas.Table, includes, excludes []string) []*schemas.Table {
+func FilterTables(tables []*schemas.Table, includes, excludes []string, tailDigits int) []*schemas.Table {
 	res := make([]*schemas.Table, 0, len(tables))
-	incl_matchers, excl_matchers := utils.NewGlobs(includes), utils.NewGlobs(excludes)
+	inclMatchers, exclMatchers := utils.NewGlobs(includes), utils.NewGlobs(excludes)
+	digitsReg := regexp.MustCompile(fmt.Sprintf("_[0-9]{%d,}", tailDigits))
 	for _, tb := range tables {
-		if excl_matchers.MatchAny(tb.Name, false) {
+		// 排除4个数字以上结尾的分表
+		if tailDigits > 0 && digitsReg.MatchString(tb.Name) {
 			continue
 		}
-		if incl_matchers.MatchAny(tb.Name, true) {
+		if exclMatchers.MatchAny(tb.Name, false) {
+			continue
+		}
+		if inclMatchers.MatchAny(tb.Name, true) {
 			res = append(res, tb)
 		}
 	}
 	return res
 }
 
-// ApplyModelMixins 将已知的Mixin嵌入到匹配的Model中
-func ApplyModelMixins(target ReverseConfig, currDir string, verbose bool) error {
-	if target.MixinDir != "" {
-		files, _ := rewrite.FindFiles(target.MixinDir, ".go")
-		for filename := range files {
-			if strings.HasSuffix(filename, "_test.go") {
-				continue
-			}
-			_ = rewrite.AddFormerMixins(filename, target.MixinNS, "")
-		}
-	}
+// ApplyDirMixins 将已知的Mixin嵌入到匹配的Model中
+func ApplyDirMixins(currDir string, verbose bool) error {
+	cps := rewrite.NewComposer()
 	files, _ := rewrite.FindFiles(currDir, ".go")
 	var err error
 	for filename := range files {
-		_err := rewrite.ParseAndMixinFile(filename, verbose)
+		// fmt.Println("mixin --", filename)
+		_err := rewrite.ParseAndMixinFile(cps, filename, verbose)
 		if _err != nil {
 			err = _err
 		}

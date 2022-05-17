@@ -258,8 +258,8 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		}
 	}
 
-	if col.Comment != "" {
-		res = append(res, fmt.Sprintf("comment('%s')", col.Comment))
+	if comm := rewrite.ReduceComment(col.Comment); comm != "" {
+		res = append(res, fmt.Sprintf("comment('%s')", comm))
 	}
 
 	names := make([]string, 0, len(col.Indexes))

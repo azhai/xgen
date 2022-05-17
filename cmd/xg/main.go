@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	reverse "github.com/azhai/xgen"
 	"github.com/azhai/xgen/cmd"
@@ -20,14 +19,30 @@ import (
 func main() {
 	options, settings := cmd.GetOptions()
 	models.Setup()
+
 	var err error
+	rver := reverse.NewGoReverser(settings.Reverse)
+	// 只扫描和应用mixins
+	if options.OnlyApplyMixins {
+		for _, cfg := range settings.Conns {
+			currDir := rver.SetOutDir(cfg.Key)
+			err = reverse.ApplyDirMixins(currDir, options.Verbose)
+			if err != nil {
+				panic(err)
+			}
+		}
+		return // 到此结束
+	}
+
+	// 采用交互模式，确定或修改部分配置
 	if options.InterActive {
 		if err = questions(settings); err != nil {
 			fmt.Println("跳过，什么也没有做！")
-			os.Exit(0)
+			return // 到此结束
 		}
 	}
-	rver := reverse.NewGoReverser(settings.Reverse)
+
+	// 生成models文件
 	if err = rver.GenModelInitFile("init"); err != nil {
 		panic(err)
 	}
