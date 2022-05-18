@@ -106,12 +106,12 @@ import (
 // the queries of {{$class}}
 // ------------------------------------------------------------
 
-func (m *{{$class}}) Load(where interface{}, args ...interface{}) (bool, error) {
+func (m *{{$class}}) Load(where any, args ...any) (bool, error) {
 	return Table().Where(where, args...).Get(m)
 }
 
 {{if ne $pkey "" -}}
-func (m *{{$class}}) Save(changes map[string]interface{}) error {
+func (m *{{$class}}) Save(changes map[string]any) error {
 	return xquery.ExecTx(Engine(), func(tx *xorm.Session) (int64, error) {
 		if changes == nil || m.{{$pkey}} == 0 {
 			{{if ne $created "" -}}changes["{{$created}}"] = time.Now()
@@ -166,7 +166,7 @@ func Quote(value string) string {
 }
 
 // Table 查询某张数据表
-func Table(args ...interface{}) *xorm.Session {
+func Table(args ...any) *xorm.Session {
 	qr := Engine().NewSession()
 	if args == nil {
 		return qr
@@ -175,7 +175,7 @@ func Table(args ...interface{}) *xorm.Session {
 }
 
 // InsertBatch 写入多行数据
-func InsertBatch(tableName string, rows []map[string]interface{}) error {
+func InsertBatch(tableName string, rows []map[string]any) error {
 	if len(rows) == 0 {
 		return nil
 	}
