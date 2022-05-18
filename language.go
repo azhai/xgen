@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/azhai/xgen/rewrite"
+	"github.com/azhai/xgen/utils"
 
 	"xorm.io/xorm/names"
 	"xorm.io/xorm/schemas"
@@ -258,7 +259,7 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		}
 	}
 
-	if comm := rewrite.ReduceComment(col.Comment); comm != "" {
+	if comm := utils.TruncateText(col.Comment, 50); comm != "" {
 		res = append(res, fmt.Sprintf("comment('%s')", comm))
 	}
 

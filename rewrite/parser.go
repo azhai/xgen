@@ -9,22 +9,12 @@ import (
 	"strings"
 )
 
-// 获取多个标识的名称列表
+// GetNameList 获取多个标识的名称列表
 func GetNameList(ids []*ast.Ident) (names []string) {
 	for _, id := range ids {
 		names = append(names, id.Name)
 	}
 	return
-}
-
-// ReduceComment
-func ReduceComment(comm string) string {
-	if comm == "" || len(comm) > 200 {
-		return ""
-	}
-	comm = strings.ReplaceAll(comm, "\r", "")
-	comm = strings.ReplaceAll(comm, "\n", " ")
-	return comm
 }
 
 // TrimComment 去掉注释两边的空白

@@ -65,6 +65,18 @@ func ReduceSpaces(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
 
+// TruncateText 截断长文本
+func TruncateText(s string, size int) string {
+	if s == "" {
+		return ""
+	}
+	text := []rune(s) // 防止将中文从中间截断
+	if size > 0 && len(text) > size {
+		s = string(text[:size-3]) + "..."
+	}
+	return ReduceSpaces(s)
+}
+
 // 用:号连接两个部分，如果后一部分也存在的话
 func ConcatWith(master, slave string) string {
 	if slave != "" {

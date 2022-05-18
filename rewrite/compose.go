@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/azhai/xgen/utils"
 	"github.com/azhai/xgen/utils/enums"
 )
 
@@ -186,7 +187,7 @@ func (s *ModelSummary) ParseFields(cp *CodeParser, node *DeclNode) int {
 		}
 		comm := cp.GetComment(f.Comment, true)
 		if len(comm) > 0 {
-			code += " //" + ReduceComment(comm)
+			code += " //" + utils.TruncateText(comm, 50)
 		}
 		s.FieldLines[i] = code
 	}

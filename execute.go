@@ -202,7 +202,7 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 	tables := make(map[string]*schemas.Table)
 	tablePrefixes := r.target.GetTablePrefixes()
 	for _, table := range tableSchemas {
-		// fmt.Println(pkgName, table.Name)
+		fmt.Println("-", pkgName, table.Name)
 		tableName := table.Name
 		if len(tablePrefixes) > 0 {
 			table.Name = trimAnyPrefix(table.Name, tablePrefixes)
@@ -290,7 +290,6 @@ func ApplyDirMixins(currDir string, verbose bool) error {
 	files, _ := rewrite.FindFiles(currDir, ".go")
 	var err error
 	for filename := range files {
-		// fmt.Println("mixin --", filename)
 		_err := rewrite.ParseAndMixinFile(cps, filename, verbose)
 		if _err != nil {
 			err = _err
