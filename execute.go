@@ -150,7 +150,6 @@ func (r *Reverser) GenModelInitFile(tmplName string) error {
 
 // ExecuteReverse 生成单个数据库下的代码文件，一个数据库一个子目录
 func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbose bool) error {
-	r.SetOutDir(source.Key)
 	dia := source.LoadDialect()
 	pkgName := aliasNameSpace(source.Key)
 	data := map[string]any{
@@ -181,14 +180,13 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 			return err
 		}
 	}
+
 	tmpl := templater.LoadTemplate(tmplName, nil)
 	codeText, err := templater.RenderTemplate(tmpl, data)
 	if err == nil {
-		filename := r.GetOutFileName(CONN_FILE_NAME)
 		formatter := r.GetFormatter()
-		if _, err = formatter(filename, codeText); err == nil {
-			err = ApplyDirMixins(r.currOutDir, verbose)
-		}
+		filename := r.GetOutFileName(CONN_FILE_NAME)
+		_, err = formatter(filename, codeText)
 	}
 	return err
 }
@@ -201,8 +199,9 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 	funcs["TableMapper"], funcs["ColumnMapper"] = tbMapper, colMapper
 	tables := make(map[string]*schemas.Table)
 	tablePrefixes := r.target.GetTablePrefixes()
+	fmt.Println("")
 	for _, table := range tableSchemas {
-		fmt.Println("-", pkgName, table.Name)
+		fmt.Println(".", pkgName, table.Name)
 		tableName := table.Name
 		if len(tablePrefixes) > 0 {
 			table.Name = trimAnyPrefix(table.Name, tablePrefixes)
@@ -288,6 +287,9 @@ func FilterTables(tables []*schemas.Table, includes, excludes []string, tailDigi
 func ApplyDirMixins(currDir string, verbose bool) error {
 	cps := rewrite.NewComposer()
 	files, _ := rewrite.FindFiles(currDir, ".go")
+	if verbose && len(files) > 0 {
+		fmt.Println("")
+	}
 	var err error
 	for filename := range files {
 		_err := rewrite.ParseAndMixinFile(cps, filename, verbose)

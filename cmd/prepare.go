@@ -51,6 +51,7 @@ func GetOptions() (*OptionConfig, *config.RootConfig) {
 	options.InterActive = interActive
 	options.OnlyApplyMixins = onlyApplyMixins
 	if options.Verbose = config.Verbose(); options.Verbose {
+		fmt.Print("Options = ")
 		pp.Println(options)
 	}
 	return options, settings

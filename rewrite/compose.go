@@ -108,8 +108,8 @@ func AddFormerMixins(fileName, nameSpace, alias string) []string {
 			continue
 		}
 		name := node.GetName()
-		if !strings.HasSuffix(name, "Mixin") {
-			continue
+		if !strings.HasSuffix(name, "Core") && !strings.HasSuffix(name, "Mixin") {
+			continue // 以Core或Mixin结尾的类才会嵌入Model中
 		}
 		summary := &ModelSummary{Import: nameSpace, Alias: alias}
 		if alias == "" {
@@ -256,14 +256,14 @@ func ScanAndUseMixins(summary, sub *ModelSummary, verbose bool) (needImport bool
 			needImport = true
 		}
 		if verbose {
-			fmt.Println(summary.Name, " <- ", sub.Name)
+			fmt.Println("*", summary.Name, " <- ", sub.Name)
 		}
 	} else if strings.HasPrefix(sub.Name, "xquery.") {
 		return // 早于反向替换，避免陷入死胡同
 	} else if enums.IsSubsetList(sorted, sted, true) { // 反向替换
 		ReplaceSummary(sub, summary)
 		if verbose {
-			fmt.Println(summary.Name, " -> ", sub.Name)
+			fmt.Println("*", summary.Name, " -> ", sub.Name)
 		}
 	}
 	return
@@ -305,7 +305,11 @@ func ParseAndMixinFile(cps *Composer, fileName string, verbose bool) error {
 		}
 	}
 	if verbose {
-		fmt.Println(fileName, " changed: ", changed)
+		if changed {
+			fmt.Println("+", fileName)
+		} else {
+			fmt.Println("-", fileName)
+		}
 	}
 	if changed { // 加入相关的 mixin imports 并美化代码
 		cs := cp.CodeSource
