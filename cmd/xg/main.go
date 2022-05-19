@@ -1,7 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"sort"
+	"strings"
 
 	reverse "github.com/azhai/xgen"
 	"github.com/azhai/xgen/cmd"
@@ -17,6 +20,12 @@ import (
 )
 
 func main() {
+	var dbKeys string
+	if flag.NArg() > 0 {
+		dbKeyList := flag.Args()
+		sort.Strings(dbKeyList)
+		dbKeys = strings.Join(dbKeyList, ",") + ","
+	}
 	options, settings := cmd.GetOptions()
 	models.Setup()
 
@@ -25,6 +34,9 @@ func main() {
 	// 只扫描和应用mixins
 	if options.OnlyApplyMixins {
 		for _, cfg := range settings.Conns {
+			if dbKeys != "" && !strings.Contains(dbKeys, cfg.Key+",") {
+				continue
+			}
 			currDir := rver.SetOutDir(cfg.Key)
 			err = reverse.ApplyDirMixins(currDir, options.Verbose)
 			if err != nil {
@@ -47,6 +59,9 @@ func main() {
 		panic(err)
 	}
 	for _, cfg := range settings.Conns {
+		if dbKeys != "" && !strings.Contains(dbKeys, cfg.Key+",") {
+			continue
+		}
 		err = rver.ExecuteReverse(cfg, options.InterActive, options.Verbose)
 		if err != nil {
 			panic(err)

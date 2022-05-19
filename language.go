@@ -51,10 +51,17 @@ const ( // 约定大于配置
 )
 
 var (
-	TypeOfTime           = reflect.TypeOf(time.Time{})
 	errBadComparisonType = errors.New("invalid type for comparison")
 	errBadComparison     = errors.New("incompatible types for comparison")
 	errNoComparison      = errors.New("missing argument for comparison")
+
+	TypeOfString  = reflect.TypeOf("")
+	TypeOfBytes   = reflect.TypeOf([]byte{})
+	TypeOfBool    = reflect.TypeOf(false)
+	TypeOfInt     = reflect.TypeOf(0)
+	TypeOfInt64   = reflect.TypeOf(int64(0))
+	TypeOfFloat64 = reflect.TypeOf(float64(0))
+	TypeOfTime    = reflect.TypeOf(time.Time{})
 
 	golang = &Language{ // Golang represents a golang language
 		Name:     "golang",
@@ -101,6 +108,48 @@ func basicKind(v reflect.Value) (kind, error) {
 		return stringKind, nil
 	}
 	return invalidKind, errBadComparisonType
+}
+
+// sqlType2Type default sql type change to go types
+func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
+	name := strings.ToUpper(st.Name)
+	rtype = TypeOfString
+	switch name {
+	case schemas.Bool:
+		rtype = TypeOfBool
+	case schemas.Bit, schemas.UnsignedBit, schemas.TinyInt, schemas.UnsignedTinyInt:
+		if st.DefaultLength == 1 {
+			rtype = TypeOfBool
+		} else {
+			rtype = TypeOfInt
+		}
+	case schemas.SmallInt, schemas.MediumInt, schemas.Int, schemas.Integer, schemas.Serial,
+		schemas.UnsignedSmallInt, schemas.UnsignedMediumInt, schemas.UnsignedInt:
+		rtype = TypeOfInt
+	case schemas.BigInt, schemas.BigSerial, schemas.UnsignedBigInt:
+		rtype = TypeOfInt64
+	case schemas.Float, schemas.Real, schemas.Double:
+		rtype = TypeOfFloat64
+	case schemas.DateTime, schemas.Date, schemas.Time, schemas.TimeStamp,
+		schemas.TimeStampz, schemas.SmallDateTime, schemas.Year:
+		rtype = TypeOfTime
+	case schemas.TinyBlob, schemas.Blob, schemas.MediumBlob, schemas.LongBlob,
+		schemas.Bytea, schemas.Binary, schemas.VarBinary, schemas.UniqueIdentifier:
+		rtype, rtstr = TypeOfBytes, "[]byte"
+	case schemas.Varchar, schemas.NVarchar, schemas.TinyText, schemas.Text,
+		schemas.NText, schemas.MediumText, schemas.LongText:
+		if st.DefaultLength == 0 || st.DefaultLength > FIXED_STR_MAX_SIZE {
+			rtstr = "sql.NullString"
+		}
+		//case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
+		//	rtstr = rtype.String()
+		//case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
+		//	rtstr = rtype.String()
+	}
+	if rtstr == "" {
+		rtstr = rtype.String()
+	}
+	return
 }
 
 func getCol(cols map[string]*schemas.Column, name string) *schemas.Column {
@@ -200,8 +249,15 @@ func genGoImports(tables map[string]*schemas.Table) map[string]string {
 }
 
 func type2string(col *schemas.Column) string {
-	_, s := SQLType2Type(col.SQLType)
-	return s
+	t, s := sqlType2Type(col.SQLType)
+	if t != TypeOfBool {
+		return s
+	}
+	if strings.HasPrefix(col.Name, "is_") ||
+		strings.HasPrefix(col.Name, "not_") {
+		return s
+	}
+	return TypeOfInt.String()
 }
 
 func tag2string(table *schemas.Table, col *schemas.Column, genJson bool) string {
@@ -288,48 +344,6 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		return fmt.Sprintf(`%s:"%s"`, XORM_TAG_NAME, strings.Join(res, " "))
 	}
 	return ""
-}
-
-// SQLType2Type default sql type change to go types
-func SQLType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
-	name := strings.ToUpper(st.Name)
-	rtype = reflect.TypeOf("")
-	switch name {
-	case schemas.Bool:
-		rtype = reflect.TypeOf(false)
-	case schemas.Bit, schemas.UnsignedBit, schemas.TinyInt, schemas.UnsignedTinyInt:
-		if st.DefaultLength == 1 {
-			rtype = reflect.TypeOf(false)
-		} else {
-			rtype = reflect.TypeOf(1)
-		}
-	case schemas.SmallInt, schemas.MediumInt, schemas.Int, schemas.Integer, schemas.Serial,
-		schemas.UnsignedSmallInt, schemas.UnsignedMediumInt, schemas.UnsignedInt:
-		rtype = reflect.TypeOf(1)
-	case schemas.BigInt, schemas.BigSerial, schemas.UnsignedBigInt:
-		rtype = reflect.TypeOf(int64(1))
-	case schemas.Float, schemas.Real, schemas.Double:
-		rtype = reflect.TypeOf(float64(1))
-	case schemas.DateTime, schemas.Date, schemas.Time, schemas.TimeStamp,
-		schemas.TimeStampz, schemas.SmallDateTime, schemas.Year:
-		rtype = TypeOfTime
-	case schemas.TinyBlob, schemas.Blob, schemas.MediumBlob, schemas.LongBlob,
-		schemas.Bytea, schemas.Binary, schemas.VarBinary, schemas.UniqueIdentifier:
-		rtype, rtstr = reflect.TypeOf([]byte{}), "[]byte"
-	case schemas.Varchar, schemas.NVarchar, schemas.TinyText, schemas.Text,
-		schemas.NText, schemas.MediumText, schemas.LongText:
-		if st.DefaultLength == 0 || st.DefaultLength > FIXED_STR_MAX_SIZE {
-			rtstr = "sql.NullString"
-		}
-		//case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
-		//	rtstr = rtype.String()
-		//case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
-		//	rtstr = rtype.String()
-	}
-	if rtstr == "" {
-		rtstr = rtype.String()
-	}
-	return
 }
 
 // GetColTypeString get the col type include length, for example: VARCHAR(255)
