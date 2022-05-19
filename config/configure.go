@@ -20,8 +20,8 @@ var (
 // RootConfig 顶层配置，包含其他配置块
 type RootConfig struct {
 	Debug   bool                   `hcl:"debug,optional" json:"debug,omitempty"`
-	Reverse reverse.ReverseConfig  `hcl:"reverse,block" json:"reverse,omitempty"`
 	App     AppConfig              `hcl:"app,block" json:"app"`
+	Reverse reverse.ReverseConfig  `hcl:"reverse,block" json:"reverse,omitempty"`
 	Repeats []dialect.RepeatConfig `hcl:"repeat,block" json:"repeat"`
 	Conns   []dialect.ConnConfig   `hcl:"conn,block" json:"conn"`
 }

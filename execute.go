@@ -149,7 +149,7 @@ func (r *Reverser) GenModelInitFile(tmplName string) error {
 }
 
 // ExecuteReverse 生成单个数据库下的代码文件，一个数据库一个子目录
-func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbose bool) error {
+func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbose bool) (bool, error) {
 	dia := source.LoadDialect()
 	pkgName := aliasNameSpace(source.Key)
 	data := map[string]any{
@@ -163,32 +163,31 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 		data["AliasName"] = ""
 	}
 
-	tmplName := "xorm"
-	if source.Type == "redis" || source.Type == "flashdb" {
-		tmplName = source.Type
-	} else {
-		tableSchemas, err := source.QuickConnect(verbose, verbose).DBMetas()
-		if err != nil {
-			fmt.Println(err)
-		}
-		tableSchemas = FilterTables(tableSchemas, r.target.IncludeTables, r.target.ExcludeTables, 4)
-		if len(tableSchemas) == 0 {
-			return nil
-		}
-		pkgName := aliasNameSpace(source.Key)
-		if err = r.ReverseTables(pkgName, tableSchemas); err != nil {
-			return err
-		}
+	tmplName, isXorm := "xorm", true
+	if !dia.IsXormDriver() {
+		tmplName, isXorm = source.Type, false
 	}
-
 	tmpl := templater.LoadTemplate(tmplName, nil)
-	codeText, err := templater.RenderTemplate(tmpl, data)
-	if err == nil {
+	if codeText, err := templater.RenderTemplate(tmpl, data); err == nil {
 		formatter := r.GetFormatter()
 		filename := r.GetOutFileName(CONN_FILE_NAME)
-		_, err = formatter(filename, codeText)
+		if _, err = formatter(filename, codeText); err != nil {
+			return isXorm, err
+		}
 	}
-	return err
+	if !isXorm { // 缓存到此结束
+		return false, nil
+	}
+
+	tableSchemas, err := source.QuickConnect(verbose, verbose).DBMetas()
+	if err != nil {
+		fmt.Println(err)
+	}
+	tableSchemas = FilterTables(tableSchemas, r.target.IncludeTables, r.target.ExcludeTables, 4)
+	if len(tableSchemas) > 0 {
+		err = r.ReverseTables(pkgName, tableSchemas)
+	}
+	return true, err
 }
 
 // ReverseTables 生成单个数据的model和query文件，或者一张表一个文件（当MultipleFiles=true）
@@ -199,6 +198,7 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 	funcs["TableMapper"], funcs["ColumnMapper"] = tbMapper, colMapper
 	tables := make(map[string]*schemas.Table)
 	tablePrefixes := r.target.GetTablePrefixes()
+
 	fmt.Println("")
 	for _, table := range tableSchemas {
 		fmt.Println(".", pkgName, table.Name)

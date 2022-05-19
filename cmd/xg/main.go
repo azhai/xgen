@@ -1,14 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"sort"
-	"strings"
+	"sync"
 
 	reverse "github.com/azhai/xgen"
 	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/config"
+	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/models"
 
 	_ "github.com/arriqaaq/flashdb"
@@ -20,11 +19,10 @@ import (
 )
 
 func main() {
-	options, settings := cmd.GetOptions()
-	dbKeys := readArgs()
+	opts, settings := cmd.GetOptions()
 	models.Setup()
 	var err error
-	if options.InterActive { // 采用交互模式，确定或修改部分配置
+	if opts.InterActive { // 采用交互模式，确定或修改部分配置
 		if err = questions(settings); err != nil {
 			fmt.Println("跳过，什么也没有做！")
 			return // 到此结束
@@ -36,32 +34,34 @@ func main() {
 	if err = rver.GenModelInitFile("init"); err != nil {
 		panic(err)
 	}
+	var wg sync.WaitGroup
+	dbArgs := config.ReadArgs(true, nil)
 	for _, cfg := range settings.Conns {
-		if dbKeys != "" && !strings.Contains(dbKeys, cfg.Key+" ") {
+		if dbArgs.Size() > 0 && !dbArgs.Has(cfg.Key) {
 			continue
 		}
-		currDir := rver.SetOutDir(cfg.Key)
-		if !options.OnlyApplyMixins {
-			err = rver.ExecuteReverse(cfg, options.InterActive, options.Verbose)
-			if err != nil {
-				panic(err)
+		wg.Add(1)
+		go func(cfg dialect.ConnConfig) {
+			defer wg.Done()
+			currDir, isXorm := rver.SetOutDir(cfg.Key), true
+			if opts.OnlyApplyMixins {
+				isXorm = cfg.LoadDialect().IsXormDriver()
+			} else {
+				isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, opts.Verbose)
+				if err != nil {
+					panic(err)
+				}
 			}
-		}
-		if err = reverse.ApplyDirMixins(currDir, options.Verbose); err != nil {
-			panic(err)
-		}
+			if isXorm {
+				err = reverse.ApplyDirMixins(currDir, opts.Verbose)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}(cfg)
 	}
+	wg.Wait()
 	fmt.Println("执行完成。")
-}
-
-// readArgs 读取参数，指定只处理哪些db
-func readArgs() string {
-	if flag.NArg() == 0 {
-		return ""
-	}
-	args := flag.Args()
-	sort.Strings(args)
-	return strings.Join(args, " ") + " "
 }
 
 // questions 交互式问题和接收回答

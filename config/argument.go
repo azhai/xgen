@@ -2,68 +2,63 @@ package config
 
 import (
 	"flag"
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
-var (
-	backDirs int    // 回退目录层级
-	cfgFile  string // 配置文件位置
-	verbose  bool   // 详细输出
-)
-
-func init() {
-	flag.IntVar(&backDirs, "b", 0, "回退目录层级") // 默认在bin目录下
-	flag.StringVar(&cfgFile, "c", "settings.hcl", "配置文件位置")
-	// 和urfave/cli的version参数冲突，需要在App中设置HideVersion
-	flag.BoolVar(&verbose, "v", false, "详细输出")
+type ArgList struct {
+	args    map[string]int
+	Convert func(string) string
 }
 
-// Setup 根据不同场景初始化
-func Setup() {
-	if !IsRunTest() {
-		flag.Parse()
-	}
-	BackToAppDir() // 根据backDirs退回APP所在目录，一般不需要
-	if cfgFile != "" && !filepath.IsAbs(cfgFile) {
-		cfgFile, _ = filepath.Abs(cfgFile) // 配置文件绝对路径
+func NewArgList(conv func(string) string) *ArgList {
+	return &ArgList{
+		args:    make(map[string]int),
+		Convert: conv,
 	}
 }
 
-// IsRunTest 是否测试模式下
-func IsRunTest() bool {
-	return strings.HasSuffix(os.Args[0], ".test")
+// Add 增加一些参数
+func (t *ArgList) Add(args []string, uniq bool) int {
+	for _, arg := range args {
+		if t.Convert != nil {
+			arg = t.Convert(arg)
+		}
+		if uniq { //去重不需要计数
+			t.args[arg] = 1
+		} else if val, ok := t.args[arg]; ok {
+			t.args[arg] = val + 1
+		} else {
+			t.args[arg] = 1
+		}
+	}
+	return t.Size()
 }
 
-// BackToDir 退回上层目录
-func BackToDir(back int) (dir string, err error) {
-	if back == 0 {
-		return
-	} else if back < 0 {
-		back = 0 - back
+// Count 获得此参数计数
+func (t *ArgList) Count(arg string) int {
+	if len(t.args) == 0 {
+		return 0
 	}
-	dir = strings.Repeat("../", back)
-	if dir, err = filepath.Abs(dir); err == nil {
-		err = os.Chdir(dir)
+	if val, ok := t.args[arg]; ok {
+		return val
 	}
-	return
+	return 0
 }
 
-// BackToAppDir 如果在子目录下运行，需要先退回上层目录
-func BackToAppDir() error {
-	dir, err := BackToDir(backDirs)
-	if err == nil && dir != "" && verbose {
-		fmt.Println("Back to dir", dir)
-	}
-	return err
+// Has 是否含有此参数
+func (t *ArgList) Has(arg string) bool {
+	return t.Count(arg) > 0
 }
 
-// Verbose 是否输出详细信息
-func Verbose() bool {
-	if !flag.Parsed() {
-		panic("Verbose called before Parse")
+// Size 参数元素个数
+func (t *ArgList) Size() int {
+	return len(t.args)
+}
+
+// ReadArgs 读取命令行参数，不包括命名参数，且必须将命名参数放在前面
+func ReadArgs(uniq bool, conv func(string) string) *ArgList {
+	lst := NewArgList(conv)
+	if flag.NArg() > 0 {
+		lst.Add(flag.Args(), uniq)
 	}
-	return verbose
+	return lst
 }

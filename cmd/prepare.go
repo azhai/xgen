@@ -38,7 +38,7 @@ func init() {
 	config.Setup()
 }
 
-// GetOptions 解析配置文件和命令行参数
+// GetOptions 解析配置文件和命令行命名参数
 func GetOptions() (*OptionConfig, *config.RootConfig) {
 	options := new(OptionConfig)
 	settings, err := config.ReadConfigFile(options)
