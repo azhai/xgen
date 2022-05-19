@@ -101,8 +101,12 @@ type Reverser struct {
 
 // NewGoReverser 创建Golang反转器
 func NewGoReverser(target ReverseConfig) *Reverser {
-	target.PrepareMixins()
 	return &Reverser{lang: golang, target: target}
+}
+
+// Clone 克隆对象
+func (r *Reverser) Clone() *Reverser {
+	return &Reverser{lang: r.lang, target: r.target}
 }
 
 // GetFormatter 对应语言的美化代码工具

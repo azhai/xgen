@@ -8,7 +8,6 @@ import (
 	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/config"
 	"github.com/azhai/xgen/dialect"
-	"github.com/azhai/xgen/models"
 
 	_ "github.com/arriqaaq/flashdb"
 	_ "github.com/go-sql-driver/mysql"
@@ -20,7 +19,7 @@ import (
 
 func main() {
 	opts, settings := cmd.GetOptions()
-	models.Setup()
+	// models.Setup()
 	var err error
 	if opts.InterActive { // 采用交互模式，确定或修改部分配置
 		if err = questions(settings); err != nil {
@@ -29,8 +28,9 @@ func main() {
 		}
 	}
 
-	// 生成models文件
+	settings.Reverse.PrepareMixins()
 	rver := reverse.NewGoReverser(settings.Reverse)
+	// 生成顶部目录下init单个文件
 	if err = rver.GenModelInitFile("init"); err != nil {
 		panic(err)
 	}
@@ -41,24 +41,26 @@ func main() {
 			continue
 		}
 		wg.Add(1)
-		go func(cfg dialect.ConnConfig) {
+		go func(rver *reverse.Reverser, cfg dialect.ConnConfig) {
 			defer wg.Done()
+
 			currDir, isXorm := rver.SetOutDir(cfg.Key), true
 			if opts.OnlyApplyMixins {
 				isXorm = cfg.LoadDialect().IsXormDriver()
-			} else {
+			} else { // 生成conn单个文件
 				isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, opts.Verbose)
 				if err != nil {
 					panic(err)
 				}
 			}
-			if isXorm {
+			if isXorm { // 生成models和queries多个文件
 				err = reverse.ApplyDirMixins(currDir, opts.Verbose)
 				if err != nil {
 					panic(err)
 				}
 			}
-		}(cfg)
+
+		}(rver.Clone(), cfg)
 	}
 	wg.Wait()
 	fmt.Println("执行完成。")
