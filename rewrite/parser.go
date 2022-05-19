@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"reflect"
 	"strings"
+
+	"github.com/azhai/xgen/utils"
 )
 
 // GetNameList 获取多个标识的名称列表
@@ -178,6 +180,30 @@ func (cp *CodeParser) ParseDecls(kind string, limit int) bool {
 	return false
 }
 
+// AllDeclNode 获取指定种类的所有节点
+func (cp *CodeParser) AllDeclNode(kind string) []*DeclNode {
+	var nodes []*DeclNode
+	cp.ParseDecls(kind, -1)
+	if idxes, ok := cp.DeclIndexes[kind]; ok {
+		for _, idx := range idxes {
+			nodes = append(nodes, cp.DeclNodes[idx])
+		}
+	}
+	return nodes
+}
+
+// FindDeclNode 根据名称规则查找
+func (cp *CodeParser) FindDeclNode(kind string, wildcards ...string) []*DeclNode {
+	var nodes []*DeclNode
+	matchers := utils.NewGlobs(wildcards)
+	for _, node := range cp.AllDeclNode(kind) {
+		if matchers.MatchAny(node.GetName(), true) {
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes
+}
+
 // GetDeclNode 获取指定种类的一个节点
 func (cp *CodeParser) GetDeclNode(kind string, offset int) *DeclNode {
 	count := offset + 1
@@ -200,16 +226,4 @@ func (cp *CodeParser) GetDeclNode(kind string, offset int) *DeclNode {
 		}
 	}
 	return nil
-}
-
-// AllDeclNode 获取指定种类的所有节点
-func (cp *CodeParser) AllDeclNode(kind string) []*DeclNode {
-	var nodes []*DeclNode
-	cp.ParseDecls(kind, -1)
-	if idxes, ok := cp.DeclIndexes[kind]; ok {
-		for _, idx := range idxes {
-			nodes = append(nodes, cp.DeclNodes[idx])
-		}
-	}
-	return nodes
 }

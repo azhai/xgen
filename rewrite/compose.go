@@ -11,9 +11,14 @@ import (
 	"github.com/azhai/xgen/utils/enums"
 )
 
-const MODEL_EXTENDS = "`json:\",inline\" xorm:\"extends\"`"
+const (
+	AdaptivePkgName = "#"
+	ModelExtends    = "`json:\",inline\" xorm:\"extends\"`"
+)
 
-var globaltComposer = GlobaltComposer()
+var (
+	globaltComposer = GlobaltComposer() // 公共Mixins
+)
 
 type Composer struct {
 	subNames  []string
@@ -77,7 +82,7 @@ func (c *Composer) RemoveSubstitute(name string) {
 	}
 }
 
-// RemoveSubstitute 删除可替换Model
+// SubstituteSummary 替换和改写Model
 func (c *Composer) SubstituteSummary(summary *ModelSummary, verbose bool) []*ModelSummary {
 	var subs []*ModelSummary
 	if c.Global != nil && len(c.Global.subNames) > 0 {
@@ -88,7 +93,7 @@ func (c *Composer) SubstituteSummary(summary *ModelSummary, verbose bool) []*Mod
 			continue // 不要替换自己
 		}
 		if sub, ok := c.subModels[subName]; ok {
-			if ScanAndUseMixins(summary, sub, verbose) {
+			if summary.ScanAndUseMixins(sub, verbose) {
 				subs = append(subs, sub)
 			}
 		}
@@ -96,31 +101,62 @@ func (c *Composer) SubstituteSummary(summary *ModelSummary, verbose bool) []*Mod
 	return subs
 }
 
-// AddFormerMixins
-func AddFormerMixins(fileName, nameSpace, alias string) []string {
+// ParseAndMixinFile 使用Mixin改写文件
+func (c *Composer) ParseAndMixinFile(fileName string, verbose bool) error {
 	cp, err := NewFileParser(fileName)
 	if err != nil {
-		return nil
+		if verbose {
+			fmt.Println(fileName, " error: ", err)
+		}
+		return err
 	}
-	var mixinNames []string
+	var changed bool
+	imports := make(map[string]string)
 	for _, node := range cp.AllDeclNode("type") {
 		if len(node.Fields) == 0 {
 			continue
 		}
-		name := node.GetName()
-		if !strings.HasSuffix(name, "Core") && !strings.HasSuffix(name, "Mixin") {
-			continue // 以Core或Mixin结尾的类才会嵌入Model中
-		}
-		summary := &ModelSummary{Import: nameSpace, Alias: alias}
-		if alias == "" {
-			alias = cp.GetPackage()
-		}
-		summary.Name = fmt.Sprintf("%s.%s", alias, name)
+		summary := &ModelSummary{Name: node.GetName()}
 		_ = summary.ParseFields(cp, node)
-		globaltComposer.RegisterSubstitute(summary)
-		mixinNames = append(mixinNames, summary.Name)
+		if summary.Isomorph() {
+			summary.IsExists = true
+		} else {
+			for _, sub := range c.SubstituteSummary(summary, verbose) {
+				imports[sub.Import] = sub.Alias
+			}
+		}
+		c.RegisterSubstitute(summary)
+		if summary.IsChanged {
+			changed = true
+			ReplaceModelFields(cp, node, summary)
+		}
 	}
-	return mixinNames
+	if changed { // 加入相关的 mixin imports 并美化代码
+		err = cp.ResetImports(fileName, imports)
+	}
+	if verbose {
+		if changed {
+			fmt.Println("+", fileName)
+		} else {
+			fmt.Println("-", fileName)
+		}
+	}
+	return err
+}
+
+// GetLineFeature 提取 struct field 的名称与类型作为特征
+func GetLineFeature(code string) string {
+	ps := strings.Fields(code)
+	if len(ps) == 1 {
+		return ps[0]
+	}
+	if strings.HasSuffix(ps[1], "json:\",inline\"") {
+		return ps[0] + ":inline"
+	}
+	if strings.HasSuffix(ps[1], "xorm:\"extends\"") {
+		return ps[0] + ":inline"
+	}
+	return ps[0] + ":" + ps[1]
 }
 
 // ModelSummary Model摘要
@@ -161,7 +197,7 @@ func (s ModelSummary) GetSortedFeatures() []string {
 	return s.sortedFeatures
 }
 
-// Isomorph 已经是
+// Isomorph 已经是其他Model的同构体，没有嵌入的空间
 func (s *ModelSummary) Isomorph() bool {
 	features := s.GetSortedFeatures()
 	return len(features) == 1 && strings.HasSuffix(features[0], ":inline")
@@ -170,7 +206,7 @@ func (s *ModelSummary) Isomorph() bool {
 // GetSubstitute
 func (s *ModelSummary) GetSubstitute() string {
 	if s.Substitute == "" {
-		s.Substitute = fmt.Sprintf("*%s %s", s.Name, MODEL_EXTENDS)
+		s.Substitute = fmt.Sprintf("*%s %s", s.Name, ModelExtends)
 	}
 	return s.Substitute
 }
@@ -194,19 +230,51 @@ func (s *ModelSummary) ParseFields(cp *CodeParser, node *DeclNode) int {
 	return size
 }
 
-// GetLineFeature 提取 struct field 的名称与类型作为特征
-func GetLineFeature(code string) string {
-	ps := strings.Fields(code)
-	if len(ps) == 1 {
-		return ps[0]
+// ReplaceSummary
+func (s *ModelSummary) ReplaceSummary(sub *ModelSummary) bool {
+	var features, lines []string
+	find, sted := false, sub.GetSortedFeatures()
+	for i, ft := range s.Features {
+		if !enums.InStringList(ft, sted) {
+			features = append(features, ft)
+			lines = append(lines, s.FieldLines[i])
+		} else if !find {
+			subst := sub.GetSubstitute()
+			features = append(features, subst)
+			lines = append(lines, subst)
+			find = true
+			s.IsChanged = true
+		}
 	}
-	if strings.HasSuffix(ps[1], "json:\",inline\"") {
-		return ps[0] + ":inline"
+	s.Features, s.FieldLines = features, lines
+	return s.IsChanged
+}
+
+// ScanAndUseMixins
+func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, verbose bool) (needImport bool) {
+	sted := sub.GetSortedFeatures()
+	sorted := s.GetSortedFeatures()
+	// 函数 IsSubsetList(..., ..., true) 用于排除异名同构的Model
+	if enums.IsSubsetList(sted, sorted, false) { // 正向替换
+		s.ReplaceSummary(sub)
+		if len(sorted) == len(sted) { //完全相等
+			s.IsExists = true
+		}
+		if sub.Import != "" {
+			needImport = true
+		}
+		if verbose {
+			fmt.Println("*", s.Name, " <- ", sub.Name)
+		}
+	} else if strings.HasPrefix(sub.Name, "xquery.") {
+		return // 早于反向替换，避免陷入死胡同
+	} else if enums.IsSubsetList(sorted, sted, true) { // 反向替换
+		sub.ReplaceSummary(s)
+		if verbose {
+			fmt.Println("*", s.Name, " -> ", sub.Name)
+		}
 	}
-	if strings.HasSuffix(ps[1], "xorm:\"extends\"") {
-		return ps[0] + ":inline"
-	}
-	return ps[0] + ":" + ps[1]
+	return
 }
 
 // ReplaceModelFields
@@ -222,106 +290,46 @@ func ReplaceModelFields(cp *CodeParser, node *DeclNode, summary *ModelSummary) {
 	cp.AddReplace(first, last, summary.GetInnerCode())
 }
 
-// ReplaceSummary
-func ReplaceSummary(summary, sub *ModelSummary) *ModelSummary {
-	var features, lines []string
-	find, sted := false, sub.GetSortedFeatures()
-	for i, ft := range summary.Features {
-		if !enums.InStringList(ft, sted) {
-			features = append(features, ft)
-			lines = append(lines, summary.FieldLines[i])
-		} else if !find {
-			subst := sub.GetSubstitute()
-			features = append(features, subst)
-			lines = append(lines, subst)
-			find = true
-			summary.IsChanged = true
-		}
-	}
-	summary.Features, summary.FieldLines = features, lines
-	return summary
-}
-
-// ScanAndUseMixins
-func ScanAndUseMixins(summary, sub *ModelSummary, verbose bool) (needImport bool) {
-	sted := sub.GetSortedFeatures()
-	sorted := summary.GetSortedFeatures()
-	// 函数 IsSubsetList(..., ..., true) 用于排除异名同构的Model
-	if enums.IsSubsetList(sted, sorted, false) { // 正向替换
-		summary = ReplaceSummary(summary, sub)
-		if len(sorted) == len(sted) { //完全相等
-			summary.IsExists = true
-		}
-		if sub.Import != "" {
-			needImport = true
-		}
-		if verbose {
-			fmt.Println("*", summary.Name, " <- ", sub.Name)
-		}
-	} else if strings.HasPrefix(sub.Name, "xquery.") {
-		return // 早于反向替换，避免陷入死胡同
-	} else if enums.IsSubsetList(sorted, sted, true) { // 反向替换
-		ReplaceSummary(sub, summary)
-		if verbose {
-			fmt.Println("*", summary.Name, " -> ", sub.Name)
-		}
-	}
-	return
-}
-
-// ParseAndMixinFile
-func ParseAndMixinFile(cps *Composer, fileName string, verbose bool) error {
+// AddFormerMixins
+func AddFormerMixins(cps *Composer, fileName, nameSpace, alias string) []string {
 	cp, err := NewFileParser(fileName)
 	if err != nil {
-		if verbose {
-			fmt.Println(fileName, " error: ", err)
-		}
-		return err
+		return nil
 	}
-	var changed bool
-	imports := make(map[string]string)
-	for _, node := range cp.AllDeclNode("type") {
+	var mixinNames []string
+	// 以Core或Mixin结尾的类才会嵌入Model中
+	for _, node := range cp.FindDeclNode("type", "*Core", "*Mixin") {
 		if len(node.Fields) == 0 {
 			continue
 		}
+		summary := &ModelSummary{Import: nameSpace, Alias: alias}
+		if alias == AdaptivePkgName {
+			alias = cp.GetPackage()
+		}
 		name := node.GetName()
-		//if strings.Contains(cp.GetNodeCode(node), MODEL_EXTENDS) {
-		//	continue // 避免重复处理 model
-		//}
-
-		summary := &ModelSummary{Name: name}
-		_ = summary.ParseFields(cp, node)
-		if summary.Isomorph() {
-			summary.IsExists = true
+		if alias == "" {
+			summary.Name = name
 		} else {
-			for _, sub := range cps.SubstituteSummary(summary, verbose) {
-				imports[sub.Import] = sub.Alias
-			}
+			summary.Name = fmt.Sprintf("%s.%s", alias, name)
 		}
+		summary.ParseFields(cp, node)
 		cps.RegisterSubstitute(summary)
-		if summary.IsChanged {
-			changed = true
-			ReplaceModelFields(cp, node, summary)
-		}
+		mixinNames = append(mixinNames, summary.Name)
 	}
-	if verbose {
-		if changed {
-			fmt.Println("+", fileName)
-		} else {
-			fmt.Println("-", fileName)
-		}
+	return mixinNames
+}
+
+func PrepareMixins(mixinDir, mixinNS string) (mixinNames []string) {
+	if _, isExists := utils.FileSize(mixinDir); !isExists {
+		return
 	}
-	if changed { // 加入相关的 mixin imports 并美化代码
-		cs := cp.CodeSource
-		if code, chg := cs.AltSource(); chg {
-			cs.SetSource(code)
+	files, _ := FindFiles(mixinDir, ".go")
+	for filename := range files {
+		if strings.HasSuffix(filename, "_test.go") {
+			continue
 		}
-		if cs, err = ResetImports(cs, imports); err != nil {
-			return err
-		}
-		if err = cs.WriteTo(fileName); err != nil {
-			return err
-		}
+		newNames := AddFormerMixins(globaltComposer, filename, mixinNS, AdaptivePkgName)
+		mixinNames = append(mixinNames, newNames...)
 	}
-	return nil
+	return
 }

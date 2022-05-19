@@ -28,7 +28,6 @@ func main() {
 		}
 	}
 
-	settings.Reverse.PrepareMixins()
 	rver := reverse.NewGoReverser(settings.Reverse)
 	// 生成顶部目录下init单个文件
 	if err = rver.GenModelInitFile("init"); err != nil {

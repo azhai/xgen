@@ -70,12 +70,20 @@ func (cs *CodeSource) AddStringCode(code string) error {
 	return cs.AddCode([]byte(code))
 }
 
+func (cs *CodeSource) GetFirstFileName() string {
+	if cs.Fileset == nil || cs.Fileset.Base() <= 1 {
+		return ""
+	}
+	file := cs.Fileset.File(token.Pos(1))
+	return file.Name()
+}
+
 // GetPackage
 func (cs *CodeSource) GetPackage() string {
-	if cs.Fileast != nil {
-		return cs.Fileast.Name.Name
+	if cs.Fileast == nil {
+		return ""
 	}
-	return ""
+	return cs.Fileast.Name.Name
 }
 
 // GetPackageOffset
@@ -199,6 +207,27 @@ func (cs *CodeSource) WriteTo(filename string) error {
 	return err
 }
 
+// ResetImports 重新注入声明，并美化代码
+func (cs *CodeSource) ResetImports(filename string, imports map[string]string) error {
+	if code, chg := cs.AltSource(); chg {
+		cs.SetSource(code)
+	}
+	pkg, offset := cs.GetPackage(), cs.GetPackageOffset()
+	source, err := FormatGolangCode(cs.Source[offset:])
+	if err != nil {
+		return err
+	}
+	var obj *CodeSource
+	obj, err = WithImports(pkg, source, imports)
+	if err != nil {
+		return err
+	}
+	if filename == "" {
+		filename = cs.GetFirstFileName()
+	}
+	return obj.WriteTo(filename)
+}
+
 // WithImports 注入导入声明
 func WithImports(pkg string, source []byte, imports map[string]string) (*CodeSource, error) {
 	cs := NewCodeSource()
@@ -216,16 +245,4 @@ func WithImports(pkg string, source []byte, imports map[string]string) (*CodeSou
 		cs.DelImport(imp, alias)
 	}
 	return cs, nil
-}
-
-// ResetImports 重新注入声明
-func ResetImports(cs *CodeSource, imports map[string]string) (*CodeSource, error) {
-	var err error
-	pkg, offset := cs.GetPackage(), cs.GetPackageOffset()
-	source, _err := FormatGolangCode(cs.Source[offset:])
-	cs, err = WithImports(pkg, source, imports)
-	if err == nil {
-		err = _err
-	}
-	return cs, err
 }

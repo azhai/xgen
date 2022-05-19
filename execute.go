@@ -77,21 +77,6 @@ func (c ReverseConfig) GetTemplateName(name string) string {
 	}
 }
 
-func (c ReverseConfig) PrepareMixins() (mixinNames []string) {
-	if c.MixinDir == "" {
-		return
-	}
-	files, _ := rewrite.FindFiles(c.MixinDir, ".go")
-	for filename := range files {
-		if strings.HasSuffix(filename, "_test.go") {
-			continue
-		}
-		newNames := rewrite.AddFormerMixins(filename, c.MixinNS, "")
-		mixinNames = append(mixinNames, newNames...)
-	}
-	return
-}
-
 // Reverser model反转器
 type Reverser struct {
 	currOutDir string
@@ -101,6 +86,7 @@ type Reverser struct {
 
 // NewGoReverser 创建Golang反转器
 func NewGoReverser(target ReverseConfig) *Reverser {
+	rewrite.PrepareMixins(target.MixinDir, target.MixinNS)
 	return &Reverser{lang: golang, target: target}
 }
 
@@ -288,18 +274,25 @@ func FilterTables(tables []*schemas.Table, includes, excludes []string, tailDigi
 }
 
 // ApplyDirMixins 将已知的Mixin嵌入到匹配的Model中
-func ApplyDirMixins(currDir string, verbose bool) error {
-	cps := rewrite.NewComposer()
+func ApplyDirMixins(currDir string, verbose bool) (err error) {
 	files, _ := rewrite.FindFiles(currDir, ".go")
 	if verbose && len(files) > 0 {
 		fmt.Println("")
 	}
-	var err error
+	notTestFiles := make([]string, 0)
+	cps := rewrite.NewComposer()
 	for filename := range files {
-		_err := rewrite.ParseAndMixinFile(cps, filename, verbose)
-		if _err != nil {
-			err = _err
+		if strings.HasSuffix(filename, "_test.go") {
+			continue
+		}
+		rewrite.AddFormerMixins(cps, filename, "", "")
+		notTestFiles = append(notTestFiles, filename)
+	}
+	for _, filename := range notTestFiles {
+		err = cps.ParseAndMixinFile(filename, verbose)
+		if err != nil {
+			return
 		}
 	}
-	return err
+	return
 }
