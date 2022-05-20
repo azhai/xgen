@@ -8,6 +8,7 @@ import (
 	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/config"
 	"github.com/azhai/xgen/dialect"
+	"github.com/azhai/xgen/rewrite"
 
 	_ "github.com/arriqaaq/flashdb"
 	_ "github.com/go-sql-driver/mysql"
@@ -19,7 +20,20 @@ import (
 
 func main() {
 	opts, settings := cmd.GetOptions()
-	// models.Setup()
+	fmt.Println(opts.ExecAction, "...")
+
+	if opts.ExecAction == "pretty" {
+		files, err := rewrite.FindFiles(".", ".go", "vendor/")
+		if err != nil {
+			panic(err)
+		}
+		for filename := range files {
+			fmt.Println("-", filename)
+			rewrite.PrettifyGolangFile(filename, true)
+		}
+		return
+	}
+
 	var err error
 	if opts.InterActive { // 采用交互模式，确定或修改部分配置
 		if err = questions(settings); err != nil {
@@ -44,7 +58,7 @@ func main() {
 			defer wg.Done()
 
 			currDir, isXorm := rver.SetOutDir(cfg.Key), true
-			if opts.OnlyApplyMixins {
+			if opts.ExecAction == "mixin" {
 				isXorm = cfg.LoadDialect().IsXormDriver()
 			} else { // 生成conn单个文件
 				isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, opts.Verbose)

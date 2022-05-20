@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/azhai/xgen/config"
 	"github.com/k0kubun/pp"
@@ -15,16 +16,16 @@ const (
 )
 
 var (
-	interActive     bool // 交互模式
-	onlyApplyMixins bool // 仅应用Mixins
+	execAction  string // 执行操作
+	interActive bool   // 交互模式
 )
 
 // OptionConfig 自定义选项，一部分是命令行输入，一部分是配置文件解析
 type OptionConfig struct {
-	InterActive     bool
-	OnlyApplyMixins bool
-	Verbose         bool
-	Version         string `hcl:"version,optional" json:"version,omitempty"`
+	ExecAction  string
+	InterActive bool
+	Verbose     bool
+	Version     string `hcl:"version,optional" json:"version,omitempty"`
 }
 
 func init() {
@@ -33,8 +34,8 @@ func init() {
 		fmt.Printf("请设置环境变量 export GOAMD64=%s\n\n", level)
 	}
 
+	flag.StringVar(&execAction, "e", "gen", "执行操作")
 	flag.BoolVar(&interActive, "i", false, "使用交互模式")
-	flag.BoolVar(&onlyApplyMixins, "m", false, "仅应用Mixins")
 	config.Setup()
 }
 
@@ -49,7 +50,7 @@ func GetOptions() (*OptionConfig, *config.RootConfig) {
 		options.Version = VERSION
 	}
 	options.InterActive = interActive
-	options.OnlyApplyMixins = onlyApplyMixins
+	options.ExecAction = strings.ToLower(execAction)
 	if options.Verbose = config.Verbose(); options.Verbose {
 		fmt.Print("Options = ")
 		pp.Println(options)

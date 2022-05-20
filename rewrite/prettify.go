@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/azhai/xgen/utils"
 	"golang.org/x/tools/imports"
 )
 
@@ -17,15 +18,27 @@ const (
 )
 
 // FindFiles 遍历目录下的文件，递归
-func FindFiles(dir, ext string) (map[string]os.FileInfo, error) {
+func FindFiles(dir, ext string, excls ...string) (map[string]os.FileInfo, error) {
 	result := make(map[string]os.FileInfo)
+	exclMatchers := utils.NewGlobs(utils.MapStrList(excls, func(s string) string {
+		return strings.TrimSuffix(s, string(filepath.Separator))
+	}, nil))
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err == nil && info.Mode().IsRegular() {
+		if err != nil { // 终止
+			return err
+		} else if exclMatchers.MatchAny(path, false) { // 跳过
+			if info.IsDir() {
+				return filepath.SkipDir
+			} else {
+				return nil
+			}
+		}
+		if info.Mode().IsRegular() {
 			if ext == "" || strings.HasSuffix(info.Name(), ext) {
 				result[path] = info
 			}
 		}
-		return err
+		return nil
 	})
 	return result, err
 }
@@ -39,12 +52,12 @@ func FormatGolangCode(src []byte) ([]byte, error) {
 	return src, err
 }
 
-func WriteCodeFile(fileName string, codeText []byte) ([]byte, error) {
-	err := ioutil.WriteFile(fileName, codeText, DEFAULT_FILE_MODE)
+func WriteCodeFile(filename string, codeText []byte) ([]byte, error) {
+	err := ioutil.WriteFile(filename, codeText, DEFAULT_FILE_MODE)
 	return codeText, err
 }
 
-func writeGolangFile(fileName string, codeText []byte, cleanImports bool) ([]byte, error) {
+func writeGolangFile(filename string, codeText []byte, cleanImports bool) ([]byte, error) {
 	// Formart/Prettify the code 格式化代码
 	srcCode, err := FormatGolangCode(codeText)
 	if err != nil {
@@ -61,35 +74,35 @@ func writeGolangFile(fileName string, codeText []byte, cleanImports bool) ([]byt
 			}
 		}
 	}
-	if _, err = WriteCodeFile(fileName, srcCode); err != nil {
+	if _, err = WriteCodeFile(filename, srcCode); err != nil {
 		return srcCode, err
 	}
 	// Split the imports in two groups: go standard and the third parts 分组排序引用包
 	var dstCode []byte
-	dstCode, err = imports.Process(fileName, srcCode, nil)
+	dstCode, err = imports.Process(filename, srcCode, nil)
 	if err != nil {
 		return srcCode, err
 	}
-	return WriteCodeFile(fileName, dstCode)
+	return WriteCodeFile(filename, dstCode)
 }
 
 // WriteGolangFilePrettify 美化并输出go代码到文件
-func WriteGolangFilePrettify(fileName string, codeText []byte) ([]byte, error) {
-	return writeGolangFile(fileName, codeText, false)
+func WriteGolangFilePrettify(filename string, codeText []byte) ([]byte, error) {
+	return writeGolangFile(filename, codeText, false)
 }
 
 // WriteGolangFilePrettify 美化和整理导入，并输出go代码到文件
-func WriteGolangFileCleanImports(fileName string, codeText []byte) ([]byte, error) {
-	return writeGolangFile(fileName, codeText, true)
+func WriteGolangFileCleanImports(filename string, codeText []byte) ([]byte, error) {
+	return writeGolangFile(filename, codeText, true)
 }
 
 // PrettifyGolangFile 格式化Go文件
-func PrettifyGolangFile(fileName string, cleanImports bool) (changed bool, err error) {
+func PrettifyGolangFile(filename string, cleanImports bool) (changed bool, err error) {
 	var srcCode, dstCode []byte
-	if srcCode, err = ioutil.ReadFile(fileName); err != nil {
+	if srcCode, err = ioutil.ReadFile(filename); err != nil {
 		return
 	}
-	dstCode, err = writeGolangFile(fileName, srcCode, cleanImports)
+	dstCode, err = writeGolangFile(filename, srcCode, cleanImports)
 	if bytes.Compare(srcCode, dstCode) != 0 {
 		changed = true
 	}
@@ -106,12 +119,12 @@ func RewritePackage(pkgpath, pkgname string) error {
 		return err
 	}
 	var content []byte
-	for fileName := range files {
-		content, err = ioutil.ReadFile(fileName)
+	for filename := range files {
+		content, err = ioutil.ReadFile(filename)
 		if err != nil {
 			break
 		}
-		_, err = WriteGolangFilePrettify(fileName, content)
+		_, err = WriteGolangFilePrettify(filename, content)
 		if err != nil {
 			break
 		}

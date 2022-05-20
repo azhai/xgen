@@ -175,11 +175,26 @@ func IsSubsetList(lst1, lst2 []string, strict bool) bool {
 	return true
 }
 
-// 将字符串数组转为一般数组
+// StrToList 将字符串数组转为一般数组
 func StrToList(data []string) []any {
 	result := make([]any, len(data))
 	for i, v := range data {
 		result[i] = v
+	}
+	return result
+}
+
+// MapStrList 将函数应用到每个元素
+func MapStrList(data []string, mf func(string) string, ff func(string) bool) []string {
+	var result []string
+	for _, v := range data {
+		if ff != nil && ff(v) == false {
+			continue
+		}
+		if mf != nil {
+			v = mf(v)
+		}
+		result = append(result, v)
 	}
 	return result
 }

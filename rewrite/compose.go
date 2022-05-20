@@ -102,11 +102,11 @@ func (c *Composer) SubstituteSummary(summary *ModelSummary, verbose bool) []*Mod
 }
 
 // ParseAndMixinFile 使用Mixin改写文件
-func (c *Composer) ParseAndMixinFile(fileName string, verbose bool) error {
-	cp, err := NewFileParser(fileName)
+func (c *Composer) ParseAndMixinFile(filename string, verbose bool) error {
+	cp, err := NewFileParser(filename)
 	if err != nil {
 		if verbose {
-			fmt.Println(fileName, " error: ", err)
+			fmt.Println(filename, " error: ", err)
 		}
 		return err
 	}
@@ -132,13 +132,13 @@ func (c *Composer) ParseAndMixinFile(fileName string, verbose bool) error {
 		}
 	}
 	if changed { // 加入相关的 mixin imports 并美化代码
-		err = cp.ResetImports(fileName, imports)
+		err = cp.ResetImports(filename, imports)
 	}
 	if verbose {
 		if changed {
-			fmt.Println("+", fileName)
+			fmt.Println("+", filename)
 		} else {
-			fmt.Println("-", fileName)
+			fmt.Println("-", filename)
 		}
 	}
 	return err
@@ -291,8 +291,8 @@ func ReplaceModelFields(cp *CodeParser, node *DeclNode, summary *ModelSummary) {
 }
 
 // AddFormerMixins
-func AddFormerMixins(cps *Composer, fileName, nameSpace, alias string) []string {
-	cp, err := NewFileParser(fileName)
+func AddFormerMixins(cps *Composer, filename, nameSpace, alias string) []string {
+	cp, err := NewFileParser(filename)
 	if err != nil {
 		return nil
 	}

@@ -23,7 +23,7 @@ import (
 )
 
 type (
-	Formatter func(fileName string, sourceCode []byte) ([]byte, error)
+	Formatter func(filename string, sourceCode []byte) ([]byte, error)
 	Importter func(tables map[string]*schemas.Table) map[string]string
 	Packager  func(targetDir string) string
 
@@ -206,11 +206,11 @@ func genNameSpace(targetDir string) string {
 	// 先重试提取已有代码文件（排除测试代码）的包名
 	files, err := rewrite.FindFiles(targetDir, ".go")
 	if err == nil && len(files) > 0 {
-		for fileName := range files {
-			if strings.HasSuffix(fileName, "_test.go") {
+		for filename := range files {
+			if strings.HasSuffix(filename, "_test.go") {
 				continue
 			}
-			cp, err := rewrite.NewFileParser(fileName)
+			cp, err := rewrite.NewFileParser(filename)
 			if err != nil {
 				continue
 			}
