@@ -133,12 +133,15 @@ func (r *RedisWrapper) LoadJson(key string, obj any) error {
 	return json.Unmarshal(value, obj)
 }
 
-func (r *RedisWrapper) GetMulti(keys ...string) (any, error) {
+func (r *RedisWrapper) OrigMulti(cmd string, keys ...any) (any, error) {
 	if len(keys) == 0 {
 		return nil, KeysEmptyError
 	}
-	args := StrToList(keys)
-	return r.Exec("MGET", args...)
+	return r.Exec(cmd, keys...)
+}
+
+func (r *RedisWrapper) GetMulti(keys ...string) (any, error) {
+	return r.OrigMulti("MGET", StrToList(keys)...)
 }
 
 func (r *RedisWrapper) LoadMap(keys ...string) (data Map, err error) {
@@ -163,12 +166,15 @@ func (rh *RedisHash) SaveMap(data Map, asJson bool) (bool, error) {
 	return ReplyBool(rh.Exec("HMSET", args...))
 }
 
-func (rh *RedisHash) GetMulti(keys ...string) (any, error) {
+func (rh *RedisHash) OrigMulti(cmd string, keys ...any) (any, error) {
 	if len(keys) == 0 {
 		return nil, KeysEmptyError
 	}
-	args := StrToList(keys)
-	return rh.Exec("HMGET", args...)
+	return rh.Exec(cmd, keys...)
+}
+
+func (rh *RedisHash) GetMulti(keys ...string) (any, error) {
+	return rh.OrigMulti("HMGET", StrToList(keys)...)
 }
 
 func (rh *RedisHash) LoadMap(keys ...string) (data Map, err error) {

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/azhai/xgen/utils"
-
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -100,7 +98,7 @@ func (sess *Session) WrapExec(cmd string, args ...any) (any, error) {
 // AddFlash 添加临时消息
 func (sess *Session) AddFlash(messages ...string) (int, error) {
 	key := fmt.Sprintf("flash:%s", sess.GetKey())
-	args := append([]any{key}, utils.StrToList(messages)...)
+	args := append([]any{key}, StrToList(messages)...)
 	return redis.Int(sess.WrapExec("RPUSH", args...))
 }
 

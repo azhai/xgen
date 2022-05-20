@@ -43,12 +43,16 @@ func (rh *RedisHash) Expire(timeout int) (bool, error) {
 	return rh.RedisWrapper.Expire(rh.name, timeout)
 }
 
-func (rh *RedisHash) Delete(keys ...string) (int, error) {
+func (rh *RedisHash) OrigDelete(keys ...any) (int, error) {
 	if len(keys) == 0 {
 		return 0, KeysEmptyError
 	}
-	reply, err := rh.Exec("HDEL", StrToList(keys)...)
+	reply, err := rh.Exec("HDEL", keys...)
 	return redis.Int(reply, err)
+}
+
+func (rh *RedisHash) Delete(keys ...string) (int, error) {
+	return rh.OrigDelete(StrToList(keys)...)
 }
 
 func (rh *RedisHash) DeleteAll() (bool, error) {

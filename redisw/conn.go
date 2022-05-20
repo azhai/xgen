@@ -160,12 +160,16 @@ func (r *RedisWrapper) Expire(key string, timeout int) (bool, error) {
 	return ReplyBool(reply, err)
 }
 
-func (r *RedisWrapper) Delete(keys ...string) (int, error) {
+func (r *RedisWrapper) OrigDelete(keys ...any) (int, error) {
 	if len(keys) == 0 {
 		return 0, KeysEmptyError
 	}
-	reply, err := r.Exec("DEL", StrToList(keys)...)
+	reply, err := r.Exec("DEL", keys...)
 	return redis.Int(reply, err)
+}
+
+func (r *RedisWrapper) Delete(keys ...string) (int, error) {
+	return r.OrigDelete(StrToList(keys)...)
 }
 
 // DeleteAll 清空当前db
