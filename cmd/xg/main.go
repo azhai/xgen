@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"sync"
 
@@ -23,13 +24,12 @@ func main() {
 	fmt.Println(opts.ExecAction, "...")
 
 	if opts.ExecAction == "pretty" {
-		files, err := rewrite.FindFiles(".", ".go", "vendor/")
-		if err != nil {
-			panic(err)
+		if flag.NArg() == 0 {
+			prettifyDir(".")
+			return
 		}
-		for filename := range files {
-			fmt.Println("-", filename)
-			rewrite.PrettifyGolangFile(filename, true)
+		for _, dir := range flag.Args() {
+			prettifyDir(dir)
 		}
 		return
 	}
@@ -54,29 +54,44 @@ func main() {
 			continue
 		}
 		wg.Add(1)
-		go func(rver *reverse.Reverser, cfg dialect.ConnConfig) {
+		go func(rver *reverse.Reverser) {
 			defer wg.Done()
-
-			currDir, isXorm := rver.SetOutDir(cfg.Key), true
-			if opts.ExecAction == "mixin" {
-				isXorm = cfg.LoadDialect().IsXormDriver()
-			} else { // 生成conn单个文件
-				isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, opts.Verbose)
-				if err != nil {
-					panic(err)
-				}
+			err := reverseDb(rver, cfg, opts)
+			if err != nil {
+				panic(err)
 			}
-			if isXorm { // 生成models和queries多个文件
-				err = reverse.ApplyDirMixins(currDir, opts.Verbose)
-				if err != nil {
-					panic(err)
-				}
-			}
-
-		}(rver.Clone(), cfg)
+		}(rver.Clone())
 	}
 	wg.Wait()
 	fmt.Println("执行完成。")
+}
+
+// prettifyDir 美化目录下的go代码文件
+func prettifyDir(dir string) {
+	files, err := rewrite.FindFiles(dir, ".go", "vendor/")
+	if err != nil {
+		panic(err)
+	}
+	for filename := range files {
+		fmt.Println("-", filename)
+		rewrite.PrettifyGolangFile(filename, true)
+	}
+}
+
+func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig, opts *cmd.OptionConfig) (err error) {
+	currDir, isXorm := rver.SetOutDir(cfg.Key), true
+	if opts.ExecAction == "mixin" {
+		isXorm = cfg.LoadDialect().IsXormDriver()
+	} else { // 生成conn单个文件
+		isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, opts.Verbose)
+		if err != nil {
+			return
+		}
+	}
+	if isXorm { // 生成models和queries多个文件
+		err = reverse.ApplyDirMixins(currDir, opts.Verbose)
+	}
+	return
 }
 
 // questions 交互式问题和接收回答

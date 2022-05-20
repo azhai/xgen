@@ -21,7 +21,10 @@ const (
 func FindFiles(dir, ext string, excls ...string) (map[string]os.FileInfo, error) {
 	result := make(map[string]os.FileInfo)
 	exclMatchers := utils.NewGlobs(utils.MapStrList(excls, func(s string) string {
-		return strings.TrimSuffix(s, string(filepath.Separator))
+		if strings.HasSuffix(s, string(filepath.Separator)) {
+			return s + "*" // 匹配所有目录下所有文件和子目录
+		}
+		return s
 	}, nil))
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil { // 终止
