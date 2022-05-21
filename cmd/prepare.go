@@ -18,6 +18,7 @@ var (
 	interActive      bool // 交互模式
 	onlyApplyMixins  bool // 仅嵌入Mixins
 	onlyPrettifyCode bool // 仅美化代码
+	onlyRunDemo      bool // 仅运行样例代码
 )
 
 // OptionConfig 自定义选项，一部分是命令行输入，一部分是配置文件解析
@@ -37,6 +38,7 @@ func init() {
 	flag.BoolVar(&interActive, "i", false, "使用交互模式")
 	flag.BoolVar(&onlyApplyMixins, "m", false, "仅嵌入Mixins")
 	flag.BoolVar(&onlyPrettifyCode, "p", false, "仅美化代码")
+	flag.BoolVar(&onlyRunDemo, "r", false, "仅运行样例代码")
 	config.Setup()
 }
 
@@ -55,6 +57,8 @@ func GetOptions() (*OptionConfig, *config.RootConfig) {
 		options.ExecAction = "mixin"
 	} else if onlyPrettifyCode {
 		options.ExecAction = "pretty"
+	} else if onlyRunDemo {
+		options.ExecAction = "demo"
 	}
 	if options.Verbose = config.Verbose(); options.Verbose {
 		fmt.Print("Options = ")

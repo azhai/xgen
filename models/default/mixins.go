@@ -9,3 +9,7 @@ type UserProfileCore struct {
 	Gender   int    `json:"gender" xorm:"notnull default 0 comment('性别 0未知 1男 2女') UNSIGNED TINYINT(1)"`
 	IsDel    bool   `json:"is_del" xorm:"notnull default 0 comment('是否删除 0正常 1已删除') UNSIGNED TINYINT(1)"`
 }
+
+func (UserProfileCore) TableName() string {
+	return "t_user_profile"
+}

@@ -22,9 +22,14 @@ import (
 
 func main() {
 	opts, settings := cmd.GetOptions()
-	fmt.Println(opts.ExecAction, "...")
+	if opts.ExecAction != "" {
+		fmt.Println(opts.ExecAction, "...")
+	}
 
-	if opts.ExecAction == "pretty" { // 仅美化目录下的代码
+	if opts.ExecAction == "demo" {
+		runTheDemo()
+		return
+	} else if opts.ExecAction == "pretty" { // 仅美化目录下的代码
 		if flag.NArg() == 0 {
 			prettifyDir(".")
 			return

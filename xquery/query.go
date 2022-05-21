@@ -9,6 +9,9 @@ import (
 // FilterFunc 过滤查询
 type FilterFunc = func(qr *xorm.Session) *xorm.Session
 
+// ScopeFunc 预置查询
+type ScopeFunc = func(qr *xorm.Session, args ...any) *xorm.Session
+
 // ModifyFunc 修改操作，用于事务
 type ModifyFunc = func(tx *xorm.Session) (int64, error)
 

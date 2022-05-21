@@ -36,18 +36,23 @@ func (Sqlite) ChangeDb(database string) (bool, error) {
 
 // BuildDSN 生成DSN连接串
 func (d Sqlite) BuildDSN() string {
-	if d.Path == "" || d.Path == ":memory:" {
-		return ":memory:"
+	if d.IsMemory() {
+		return "file::memory:?cache=shared&"
 	}
 	return "file:" + d.Path + "?cache=shared&mode=rwc&"
 }
 
 // BuildFullDSN 生成带账号的完整DSN
 func (d Sqlite) BuildFullDSN(username, password string) string {
-	dsn, head := d.BuildDSN(), "file:"
-	if strings.HasPrefix(dsn, head) {
+	dsn := d.BuildDSN()
+	if !d.IsMemory() && username != "" {
 		dsn += "_auth_user=" + username + "&"
 		dsn += "_auth_pass=" + Escape(password) + "&"
 	}
 	return dsn
+}
+
+// IsMemory 是否内存数据库
+func (d Sqlite) IsMemory() bool {
+	return d.Path == "" || strings.ToLower(d.Path) == ":memory:"
 }

@@ -107,7 +107,7 @@ import (
 // ------------------------------------------------------------
 
 func (m *{{$class}}) Load(where any, args ...any) (bool, error) {
-	return Table().Where(where, args...).Get(m)
+	return Table(m).Where(where, args...).Get(m)
 }
 
 {{if ne $pkey "" -}}
@@ -140,8 +140,22 @@ import (
 )
 
 var (
-	engine  *xorm.Engine
+	engine *xorm.Engine
+	scopes = map[string]xquery.ScopeFunc{
+		"@id-in": func(qr *xorm.Session, args ...any) *xorm.Session {
+			return qr.In("id", args...)
+		},
+	}
 )
+
+// AddScope 添加或禁用Scope
+func AddScope(name string, scp xquery.ScopeFunc) {
+	if strings.HasPrefix(name, "@") {
+		scopes[name] = scp
+	} else {
+		scopes["@"+name] = scp
+	}
+}
 
 // ConnectXorm 连接数据库
 func ConnectXorm(cfg dialect.ConnConfig) *xorm.Engine {
@@ -172,6 +186,20 @@ func Table(args ...any) *xorm.Session {
 		return qr
 	}
 	return qr.Table(args[0])
+}
+
+// Scope 构造查询
+func Scope(qr *xorm.Session, act string, args ...any) *xorm.Session {
+	if qr == nil {
+		qr = Engine().NewSession()
+	}
+	if !strings.HasPrefix(act, "@") {
+		return qr.Where(act, args...)
+	}
+	if scp, ok := scopes[act]; ok && scp != nil {
+		qr = scp(qr, args...)
+	}
+	return qr
 }
 
 // InsertBatch 写入多行数据
