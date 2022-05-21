@@ -10,6 +10,7 @@ import (
 	"github.com/azhai/xgen/config"
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/rewrite"
+	"github.com/azhai/xgen/utils"
 
 	_ "github.com/arriqaaq/flashdb"
 	_ "github.com/go-sql-driver/mysql"
@@ -21,9 +22,14 @@ import (
 
 func main() {
 	opts, settings := cmd.GetOptions()
-	fmt.Println(opts.ExecAction, "...")
+	if opts.ExecAction != "" {
+		fmt.Println(opts.ExecAction, "...")
+	}
 
-	if opts.ExecAction == "pretty" {
+	if opts.ExecAction == "demo" {
+		runTheDemo()
+		return
+	} else if opts.ExecAction == "pretty" { // 仅美化目录下的代码
 		if flag.NArg() == 0 {
 			prettifyDir(".")
 			return
@@ -54,13 +60,13 @@ func main() {
 			continue
 		}
 		wg.Add(1)
-		go func(rver *reverse.Reverser) {
+		go func(rver *reverse.Reverser, cfg dialect.ConnConfig) {
 			defer wg.Done()
 			err := reverseDb(rver, cfg, opts)
 			if err != nil {
 				panic(err)
 			}
-		}(rver.Clone())
+		}(rver.Clone(), cfg)
 	}
 	wg.Wait()
 	fmt.Println("执行完成。")
@@ -68,19 +74,19 @@ func main() {
 
 // prettifyDir 美化目录下的go代码文件
 func prettifyDir(dir string) {
-	files, err := rewrite.FindFiles(dir, ".go", "vendor/")
+	files, err := utils.FindFiles(dir, ".go", "vendor/", ".git/")
 	if err != nil {
 		panic(err)
 	}
 	for filename := range files {
 		fmt.Println("-", filename)
-		rewrite.PrettifyGolangFile(filename, true)
+		rewrite.RewriteGolangFile(filename, true)
 	}
 }
 
 func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig, opts *cmd.OptionConfig) (err error) {
 	currDir, isXorm := rver.SetOutDir(cfg.Key), true
-	if opts.ExecAction == "mixin" {
+	if opts.ExecAction == "mixin" { // 只进行Mixin嵌入
 		isXorm = cfg.LoadDialect().IsXormDriver()
 	} else { // 生成conn单个文件
 		isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, opts.Verbose)

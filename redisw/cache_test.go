@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var cfg = dialect.ConnConfig{Type: "redis"}
+var (
+	cfg = dialect.ConnConfig{Type: "redis", Key: "test"}
+)
 
 func GetRedis() *redisw.RedisWrapper {
 	return redisw.NewRedisPool(cfg, 0)

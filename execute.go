@@ -90,7 +90,7 @@ func NewGoReverser(target ReverseConfig) *Reverser {
 	return &Reverser{lang: golang, target: target}
 }
 
-// Clone 克隆对象
+// Clone 克隆生成副本，用于不同协程中
 func (r *Reverser) Clone() *Reverser {
 	return &Reverser{lang: r.lang, target: r.target}
 }
@@ -98,7 +98,7 @@ func (r *Reverser) Clone() *Reverser {
 // GetFormatter 对应语言的美化代码工具
 func (r *Reverser) GetFormatter() Formatter {
 	if r.lang == nil || r.lang.Formatter == nil {
-		return rewrite.WriteCodeFile
+		return rewrite.SaveCodeToFile
 	}
 	return r.lang.Formatter
 }
@@ -110,7 +110,7 @@ func (r *Reverser) SetOutDir(key string) string {
 	} else {
 		r.currOutDir = filepath.Join(r.target.OutputDir, key)
 	}
-	os.MkdirAll(r.currOutDir, rewrite.DEFAULT_DIR_MODE)
+	os.MkdirAll(r.currOutDir, utils.DefaultDirMode)
 	return r.currOutDir
 }
 
@@ -275,7 +275,7 @@ func FilterTables(tables []*schemas.Table, includes, excludes []string, tailDigi
 
 // ApplyDirMixins 将已知的Mixin嵌入到匹配的Model中
 func ApplyDirMixins(currDir string, verbose bool) (err error) {
-	files, _ := rewrite.FindFiles(currDir, ".go")
+	files, _ := utils.FindFiles(currDir, ".go")
 	if verbose && len(files) > 0 {
 		fmt.Println("")
 	}

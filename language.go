@@ -204,7 +204,7 @@ func convertMapper(mapname string) names.Mapper {
 
 func genNameSpace(targetDir string) string {
 	// 先重试提取已有代码文件（排除测试代码）的包名
-	files, err := rewrite.FindFiles(targetDir, ".go")
+	files, err := utils.FindFiles(targetDir, ".go")
 	if err == nil && len(files) > 0 {
 		for filename := range files {
 			if strings.HasSuffix(filename, "_test.go") {

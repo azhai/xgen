@@ -9,17 +9,14 @@ app "xgen" {
 reverse "golang" {
     output_dir = "./models"
     name_space = "github.com/azhai/xgen/models"
-    mixin_dir = "./xquery"
-    mixin_ns = "github.com/azhai/xgen/xquery"
-    multiple_files = false
     table_prefix = "*"
     include_tables = ["t_*"]
 }
 
 repeat "mysql" {
     key = "default"
-    db_prefix = ""
-    db_names = ["test2"]
+    db_prefix = "db_"
+    db_names = []
 }
 
 conn "mysql" "default" {

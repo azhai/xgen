@@ -4,46 +4,19 @@ import (
 	"bytes"
 	"go/format"
 	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/azhai/xgen/utils"
 	"golang.org/x/tools/imports"
 )
 
-const (
-	DEFAULT_DIR_MODE  = 0o755
-	DEFAULT_FILE_MODE = 0o644
-)
-
-// FindFiles 遍历目录下的文件，递归
-func FindFiles(dir, ext string, excls ...string) (map[string]os.FileInfo, error) {
-	result := make(map[string]os.FileInfo)
-	exclMatchers := utils.NewGlobs(utils.MapStrList(excls, func(s string) string {
-		if strings.HasSuffix(s, string(filepath.Separator)) {
-			return s + "*" // 匹配所有目录下所有文件和子目录
-		}
-		return s
-	}, nil))
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil { // 终止
-			return err
-		} else if exclMatchers.MatchAny(path, false) { // 跳过
-			if info.IsDir() {
-				return filepath.SkipDir
-			} else {
-				return nil
-			}
-		}
-		if info.Mode().IsRegular() {
-			if ext == "" || strings.HasSuffix(info.Name(), ext) {
-				result[path] = info
-			}
-		}
-		return nil
-	})
-	return result, err
+// TrimComment 去掉注释两边的空白
+func TrimComment(c string) string {
+	c = strings.TrimSpace(c)
+	if strings.HasPrefix(c, "//") {
+		c = strings.TrimSpace(c[2:])
+	}
+	return c
 }
 
 // FormatGolangCode 格式化代码，如果出错返回原内容
@@ -55,9 +28,23 @@ func FormatGolangCode(src []byte) ([]byte, error) {
 	return src, err
 }
 
-func WriteCodeFile(filename string, codeText []byte) ([]byte, error) {
-	err := ioutil.WriteFile(filename, codeText, DEFAULT_FILE_MODE)
+// SaveCodeToFile 将go代码保存到文件
+func SaveCodeToFile(filename string, codeText []byte) ([]byte, error) {
+	err := ioutil.WriteFile(filename, codeText, utils.DefaultFileMode)
 	return codeText, err
+}
+
+// RewriteGolangFile 读出来go代码，重新写入文件
+func RewriteGolangFile(filename string, cleanImports bool) (changed bool, err error) {
+	var srcCode, dstCode []byte
+	if srcCode, err = ioutil.ReadFile(filename); err != nil {
+		return
+	}
+	dstCode, err = writeGolangFile(filename, srcCode, cleanImports)
+	if bytes.Compare(srcCode, dstCode) != 0 {
+		changed = true
+	}
+	return
 }
 
 func writeGolangFile(filename string, codeText []byte, cleanImports bool) ([]byte, error) {
@@ -77,7 +64,7 @@ func writeGolangFile(filename string, codeText []byte, cleanImports bool) ([]byt
 			}
 		}
 	}
-	if _, err = WriteCodeFile(filename, srcCode); err != nil {
+	if _, err = SaveCodeToFile(filename, srcCode); err != nil {
 		return srcCode, err
 	}
 	// Split the imports in two groups: go standard and the third parts 分组排序引用包
@@ -86,7 +73,7 @@ func writeGolangFile(filename string, codeText []byte, cleanImports bool) ([]byt
 	if err != nil {
 		return srcCode, err
 	}
-	return WriteCodeFile(filename, dstCode)
+	return SaveCodeToFile(filename, dstCode)
 }
 
 // WriteGolangFilePrettify 美化并输出go代码到文件
@@ -99,25 +86,12 @@ func WriteGolangFileCleanImports(filename string, codeText []byte) ([]byte, erro
 	return writeGolangFile(filename, codeText, true)
 }
 
-// PrettifyGolangFile 格式化Go文件
-func PrettifyGolangFile(filename string, cleanImports bool) (changed bool, err error) {
-	var srcCode, dstCode []byte
-	if srcCode, err = ioutil.ReadFile(filename); err != nil {
-		return
-	}
-	dstCode, err = writeGolangFile(filename, srcCode, cleanImports)
-	if bytes.Compare(srcCode, dstCode) != 0 {
-		changed = true
-	}
-	return
-}
-
 // RewritePackage 将包中的Go文件格式化，如果提供了pkgname则用作新包名
 func RewritePackage(pkgpath, pkgname string) error {
 	if pkgname != "" {
 		// TODO: 替换包名
 	}
-	files, err := FindFiles(pkgpath, ".go")
+	files, err := utils.FindFiles(pkgpath, ".go")
 	if err != nil {
 		return err
 	}
@@ -133,4 +107,23 @@ func RewritePackage(pkgpath, pkgname string) error {
 		}
 	}
 	return err
+}
+
+// RewriteWithImports 注入导入声明
+func RewriteWithImports(pkg string, source []byte, imports map[string]string) (*CodeSource, error) {
+	cs := NewCodeSource()
+	if err := cs.SetPackage(pkg); err != nil {
+		return cs, err
+	}
+	// 添加可能引用的包，后面再尝试删除不一定会用的包
+	for imp, alias := range imports {
+		cs.AddImport(imp, alias)
+	}
+	if err := cs.AddCode(source); err != nil {
+		return cs, err
+	}
+	for imp, alias := range imports {
+		cs.DelImport(imp, alias)
+	}
+	return cs, nil
 }

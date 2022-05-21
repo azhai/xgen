@@ -19,15 +19,6 @@ func GetNameList(ids []*ast.Ident) (names []string) {
 	return
 }
 
-// TrimComment 去掉注释两边的空白
-func TrimComment(c string) string {
-	c = strings.TrimSpace(c)
-	if strings.HasPrefix(c, "//") {
-		c = strings.TrimSpace(c[2:])
-	}
-	return c
-}
-
 // FieldNode 类成员节点
 type FieldNode struct {
 	Names   []string

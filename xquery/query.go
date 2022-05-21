@@ -9,6 +9,9 @@ import (
 // FilterFunc 过滤查询
 type FilterFunc = func(qr *xorm.Session) *xorm.Session
 
+// ScopeFunc 预置查询
+type ScopeFunc = func(qr *xorm.Session, args ...any) *xorm.Session
+
 // ModifyFunc 修改操作，用于事务
 type ModifyFunc = func(tx *xorm.Session) (int64, error)
 
@@ -32,21 +35,6 @@ func ExecTx(engine *xorm.Engine, modify ModifyFunc) error {
 		return err
 	}
 	return tx.Commit()
-}
-
-// QueryAll 查询多行数据
-func QueryAll(qr *xorm.Session, filter FilterFunc, pages ...int) *xorm.Session {
-	if filter != nil {
-		qr = filter(qr)
-	}
-	pageno, pagesize := 0, -1
-	if len(pages) >= 1 {
-		pageno = pages[0]
-		if len(pages) >= 2 {
-			pagesize = pages[1]
-		}
-	}
-	return Paginate(qr, pageno, pagesize)
 }
 
 // NegativeOffset 调整从后往前翻页

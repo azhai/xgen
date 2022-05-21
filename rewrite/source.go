@@ -28,7 +28,7 @@ type CodeSource struct {
 	*printer.Config
 }
 
-// NewCodeSource
+// NewCodeSource 创造源码解析器
 func NewCodeSource() *CodeSource {
 	return &CodeSource{
 		Fileset: token.NewFileSet(),
@@ -39,14 +39,14 @@ func NewCodeSource() *CodeSource {
 	}
 }
 
-// SetSource
+// SetSource 替换全部代码，并重新解析
 func (cs *CodeSource) SetSource(source []byte) (err error) {
 	cs.Source = source
 	cs.Fileast, err = parser.ParseFile(cs.Fileset, "", source, parser.ParseComments)
 	return
 }
 
-// GetContent
+// GetContent 获取代码内容
 func (cs *CodeSource) GetContent() ([]byte, error) {
 	var buf bytes.Buffer
 	err := cs.Config.Fprint(&buf, cs.Fileset, cs.Fileast)
@@ -56,7 +56,7 @@ func (cs *CodeSource) GetContent() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// AddCode
+// AddCode 增加新代码在原有之后
 func (cs *CodeSource) AddCode(code []byte) error {
 	content, err := cs.GetContent()
 	if err != nil {
@@ -65,11 +65,12 @@ func (cs *CodeSource) AddCode(code []byte) error {
 	return cs.SetSource(append(content, code...))
 }
 
-// AddStringCode
+// AddStringCode 增加新代码在原有之后
 func (cs *CodeSource) AddStringCode(code string) error {
 	return cs.AddCode([]byte(code))
 }
 
+// GetFirstFileName 如果代码由多个文件组成，返回第一个文件路径
 func (cs *CodeSource) GetFirstFileName() string {
 	if cs.Fileset == nil || cs.Fileset.Base() <= 1 {
 		return ""
@@ -78,15 +79,7 @@ func (cs *CodeSource) GetFirstFileName() string {
 	return file.Name()
 }
 
-// GetPackage
-func (cs *CodeSource) GetPackage() string {
-	if cs.Fileast == nil {
-		return ""
-	}
-	return cs.Fileast.Name.Name
-}
-
-// GetPackageOffset
+// GetPackageOffset 获取包名结束位置
 func (cs *CodeSource) GetPackageOffset() int {
 	if cs.Fileast != nil {
 		pos := cs.Fileast.Name.End()
@@ -95,7 +88,15 @@ func (cs *CodeSource) GetPackageOffset() int {
 	return 0
 }
 
-// SetPackage
+// GetPackage 获取包名
+func (cs *CodeSource) GetPackage() string {
+	if cs.Fileast == nil {
+		return ""
+	}
+	return cs.Fileast.Name.Name
+}
+
+// SetPackage 设置新的包名
 func (cs *CodeSource) SetPackage(name string) (err error) {
 	if cs.Fileast == nil {
 		code := fmt.Sprintf("package %s", name)
@@ -106,12 +107,12 @@ func (cs *CodeSource) SetPackage(name string) (err error) {
 	return
 }
 
-// AddImport
+// AddImport 增加一个import
 func (cs *CodeSource) AddImport(path, alias string) bool {
 	return astutil.AddNamedImport(cs.Fileset, cs.Fileast, alias, path)
 }
 
-// DelImport
+// DelImport 删除一个import
 func (cs *CodeSource) DelImport(path, alias string) bool {
 	if astutil.UsesImport(cs.Fileast, path) {
 		return false
@@ -119,7 +120,7 @@ func (cs *CodeSource) DelImport(path, alias string) bool {
 	return astutil.DeleteNamedImport(cs.Fileset, cs.Fileast, alias, path)
 }
 
-// CleanImports
+// CleanImports 整理全部import代码
 func (cs *CodeSource) CleanImports() (removes int) {
 	for _, groups := range astutil.Imports(cs.Fileset, cs.Fileast) {
 		for _, imp := range groups {
@@ -136,7 +137,7 @@ func (cs *CodeSource) CleanImports() (removes int) {
 	return
 }
 
-// GetNodeCode
+// GetNodeCode 获得节点代码内容
 func (cs *CodeSource) GetNodeCode(node ast.Node) string {
 	// 请先保证 node 不是 nil
 	pos := cs.Fileset.PositionFor(node.Pos(), false)
@@ -144,7 +145,7 @@ func (cs *CodeSource) GetNodeCode(node ast.Node) string {
 	return string(cs.Source[pos.Offset:end.Offset])
 }
 
-// GetFieldCode
+// GetFieldCode 获得类成员代码内容
 func (cs *CodeSource) GetFieldCode(node *DeclNode, i int) string {
 	if i < 0 {
 		i += len(node.Fields)
@@ -165,7 +166,7 @@ func (cs *CodeSource) GetComment(c *ast.CommentGroup, trim bool) string {
 	return comment
 }
 
-// AddReplace
+// AddReplace 将两个节点以及中间的部分，使用新内容代替
 func (cs *CodeSource) AddReplace(first, last ast.Node, code string) {
 	// 请先保证 first, last 不是 nil
 	pos := cs.Fileset.PositionFor(first.Pos(), false)
@@ -174,7 +175,7 @@ func (cs *CodeSource) AddReplace(first, last ast.Node, code string) {
 	cs.Alternates = append(cs.Alternates, alt)
 }
 
-// AltSource
+// AltSource 改写源码，应用事先准备的可代替代码Alternates
 func (cs *CodeSource) AltSource() ([]byte, bool) {
 	if len(cs.Alternates) == 0 {
 		return cs.Source, false
@@ -197,7 +198,7 @@ func (cs *CodeSource) AltSource() ([]byte, bool) {
 	return bytes.Join(chunks, nil), true
 }
 
-// WriteTo
+// WriteTo 美化代码并保存到文件
 func (cs *CodeSource) WriteTo(filename string) error {
 	code, err := cs.GetContent()
 	if err != nil {
@@ -218,7 +219,7 @@ func (cs *CodeSource) ResetImports(filename string, imports map[string]string) e
 		return err
 	}
 	var obj *CodeSource
-	obj, err = WithImports(pkg, source, imports)
+	obj, err = RewriteWithImports(pkg, source, imports)
 	if err != nil {
 		return err
 	}
@@ -226,23 +227,4 @@ func (cs *CodeSource) ResetImports(filename string, imports map[string]string) e
 		filename = cs.GetFirstFileName()
 	}
 	return obj.WriteTo(filename)
-}
-
-// WithImports 注入导入声明
-func WithImports(pkg string, source []byte, imports map[string]string) (*CodeSource, error) {
-	cs := NewCodeSource()
-	if err := cs.SetPackage(pkg); err != nil {
-		return cs, err
-	}
-	// 添加可能引用的包，后面再尝试删除不一定会用的包
-	for imp, alias := range imports {
-		cs.AddImport(imp, alias)
-	}
-	if err := cs.AddCode(source); err != nil {
-		return cs, err
-	}
-	for imp, alias := range imports {
-		cs.DelImport(imp, alias)
-	}
-	return cs, nil
 }
