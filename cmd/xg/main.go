@@ -74,7 +74,7 @@ func main() {
 
 // prettifyDir 美化目录下的go代码文件
 func prettifyDir(dir string) {
-	files, err := utils.FindFiles(dir, ".go", "vendor/")
+	files, err := utils.FindFiles(dir, ".go", "vendor/", ".git/")
 	if err != nil {
 		panic(err)
 	}
