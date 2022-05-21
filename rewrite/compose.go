@@ -17,15 +17,18 @@ const (
 )
 
 var (
-	globaltComposer = GlobaltComposer() // 公共Mixins
+	MixinWildcards  = []string{"*Core", "*Mixin"} // 可注册的Mixin类名形式
+	globaltComposer = GlobaltComposer()           // 公共Mixins嵌入器
 )
 
+// Composer 是一个Model分析和嵌入工具
 type Composer struct {
 	subNames  []string
 	subModels map[string]*ModelSummary
 	Global    *Composer
 }
 
+// NewComposer 创造嵌入工具，带一个全局公共嵌入器
 func NewComposer() *Composer {
 	return &Composer{
 		subModels: make(map[string]*ModelSummary),
@@ -33,7 +36,7 @@ func NewComposer() *Composer {
 	}
 }
 
-// GlobalComposer 默认的Composer，带有xquery的两个mixins
+// GlobalComposer 公共嵌入器，带有xquery的两个mixins
 func GlobaltComposer() *Composer {
 	cps := &Composer{
 		subNames:  []string{"xquery.NestedMixin", "xquery.TimeMixin"},
@@ -203,7 +206,7 @@ func (s *ModelSummary) Isomorph() bool {
 	return len(features) == 1 && strings.HasSuffix(features[0], ":inline")
 }
 
-// GetSubstitute
+// GetSubstitute 使用inline tag代替原来的那些字段
 func (s *ModelSummary) GetSubstitute() string {
 	if s.Substitute == "" {
 		s.Substitute = fmt.Sprintf("*%s %s", s.Name, ModelExtends)
@@ -290,7 +293,7 @@ func ReplaceModelFields(cp *CodeParser, node *DeclNode, summary *ModelSummary) {
 	cp.AddReplace(first, last, summary.GetInnerCode())
 }
 
-// AddFormerMixins
+// AddFormerMixins 将文件中符合的Mixin类先行注册
 func AddFormerMixins(cps *Composer, filename, nameSpace, alias string) []string {
 	cp, err := NewFileParser(filename)
 	if err != nil {
@@ -298,7 +301,7 @@ func AddFormerMixins(cps *Composer, filename, nameSpace, alias string) []string 
 	}
 	var mixinNames []string
 	// 以Core或Mixin结尾的类才会嵌入Model中
-	for _, node := range cp.FindDeclNode("type", "*Core", "*Mixin") {
+	for _, node := range cp.FindDeclNode("type", MixinWildcards...) {
 		if len(node.Fields) == 0 {
 			continue
 		}
@@ -319,11 +322,12 @@ func AddFormerMixins(cps *Composer, filename, nameSpace, alias string) []string 
 	return mixinNames
 }
 
+// PrepareMixins 扫描目录中的可注册Mixin，并声明为某个NameSpace下
 func PrepareMixins(mixinDir, mixinNS string) (mixinNames []string) {
 	if _, isExists := utils.FileSize(mixinDir); !isExists {
 		return
 	}
-	files, _ := FindFiles(mixinDir, ".go")
+	files, _ := utils.FindFiles(mixinDir, ".go")
 	for filename := range files {
 		if strings.HasSuffix(filename, "_test.go") {
 			continue

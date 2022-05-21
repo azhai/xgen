@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	FILE_MODE = 0666
-	DIR_MODE  = 0777
+	DefaultDirMode  = 0o755
+	DefaultFileMode = 0o644
 )
 
 // FileSize 检查文件是否存在及大小
@@ -37,11 +37,11 @@ func FileSize(path string) (int64, bool) {
 func CreateFile(path string) (fp *os.File, err error) {
 	// create dirs if file not exists
 	if dir := filepath.Dir(path); dir != "." {
-		err = os.MkdirAll(dir, DIR_MODE)
+		err = os.MkdirAll(dir, DefaultDirMode)
 	}
 	if err == nil {
 		flag := os.O_RDWR | os.O_CREATE | os.O_TRUNC
-		fp, err = os.OpenFile(path, flag, FILE_MODE)
+		fp, err = os.OpenFile(path, flag, DefaultFileMode)
 	}
 	return
 }
@@ -60,7 +60,7 @@ func OpenFile(path string, readonly, append bool) (fp *os.File, size int64, err 
 		} else if append {
 			flag |= os.O_APPEND
 		}
-		fp, err = os.OpenFile(path, flag, FILE_MODE)
+		fp, err = os.OpenFile(path, flag, DefaultFileMode)
 	} else if readonly == false {
 		fp, err = CreateFile(path)
 	}
@@ -93,7 +93,36 @@ func MkdirForFile(path string) int64 {
 	}
 	if !exists {
 		dir := filepath.Dir(path)
-		_ = os.MkdirAll(dir, DIR_MODE)
+		_ = os.MkdirAll(dir, DefaultDirMode)
 	}
 	return size
+}
+
+// FindFiles 遍历目录下的文件，递归方法
+func FindFiles(dir, ext string, excls ...string) (map[string]os.FileInfo, error) {
+	result := make(map[string]os.FileInfo)
+	exclMatchers := NewGlobs(MapStrList(excls, func(s string) string {
+		if strings.HasSuffix(s, string(filepath.Separator)) {
+			return s + "*" // 匹配所有目录下所有文件和子目录
+		}
+		return s
+	}, nil))
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil { // 终止
+			return err
+		} else if exclMatchers.MatchAny(path, false) { // 跳过
+			if info.IsDir() {
+				return filepath.SkipDir
+			} else {
+				return nil
+			}
+		}
+		if info.Mode().IsRegular() {
+			if ext == "" || strings.HasSuffix(info.Name(), ext) {
+				result[path] = info
+			}
+		}
+		return nil
+	})
+	return result, err
 }

@@ -34,21 +34,6 @@ func ExecTx(engine *xorm.Engine, modify ModifyFunc) error {
 	return tx.Commit()
 }
 
-// QueryAll 查询多行数据
-func QueryAll(qr *xorm.Session, filter FilterFunc, pages ...int) *xorm.Session {
-	if filter != nil {
-		qr = filter(qr)
-	}
-	pageno, pagesize := 0, -1
-	if len(pages) >= 1 {
-		pageno = pages[0]
-		if len(pages) >= 2 {
-			pagesize = pages[1]
-		}
-	}
-	return Paginate(qr, pageno, pagesize)
-}
-
 // NegativeOffset 调整从后往前翻页
 func NegativeOffset(offset, pagesize, total int) int {
 	if remain := total % pagesize; remain > 0 {
@@ -87,3 +72,18 @@ func Paginate(query *xorm.Session, pageno, pagesize int) *xorm.Session {
 	}
 	return query
 }
+
+// QueryAll 查询多行数据
+// func QueryAll(qr *xorm.Session, filter FilterFunc, pages ...int) *xorm.Session {
+// 	if filter != nil {
+// 		qr = filter(qr)
+// 	}
+// 	pageno, pagesize := 0, -1
+// 	if len(pages) >= 1 {
+// 		pageno = pages[0]
+// 		if len(pages) >= 2 {
+// 			pagesize = pages[1]
+// 		}
+// 	}
+// 	return Paginate(qr, pageno, pagesize)
+// }

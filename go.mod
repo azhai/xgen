@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.12.0
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/klauspost/cpuid/v2 v2.0.12
-	github.com/lib/pq v1.10.5
+	github.com/lib/pq v1.10.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/stretchr/testify v1.7.1
@@ -46,7 +46,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect
-	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
+	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20220512140231-539c8e751b99 // indirect
