@@ -1,0 +1,54 @@
+package cmd
+
+import (
+	"flag"
+	"time"
+
+	"github.com/azhai/xgen/config"
+	xutils "github.com/azhai/xgen/utils"
+	"github.com/k0kubun/pp"
+)
+
+var (
+	serverHost  string // 运行IP
+	serverPort  int    // 运行端口
+	logger      *xutils.Logger
+)
+
+type OptionConfig struct {
+	Host        string `hcl:"host,optional" json:"host,omitempty"`
+	Port        int    `hcl:"port" json:"port"`
+}
+
+func init() {
+	flag.StringVar(&serverHost, "s", "", "运行IP")
+	flag.IntVar(&serverPort, "p", 9870, "运行端口")
+	config.Setup()
+}
+
+func GetOptions() (*OptionConfig, *config.RootConfig) {
+	options := new(OptionConfig)
+	settings, err := config.ReadConfigFile(options)
+	if err != nil {
+		panic(err)
+	}
+	logger, err = config.GetConfigLogger()
+	if err != nil {
+		panic(err)
+	}
+
+	if serverHost != "" {
+		options.Host = serverHost
+	}
+	if serverPort > 0 {
+		options.Port = serverPort
+	}
+	if config.Verbose() {
+		pp.Println(options)
+	}
+	return options, settings
+}
+
+func GetDefaultLogger() *xutils.Logger {
+	return logger
+}

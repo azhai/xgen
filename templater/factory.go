@@ -137,7 +137,7 @@ func (f *Factory) RegisterFile(filename string, funcs template.FuncMap) *templat
 	}
 	name := filepath.Base(filename)
 	if extname := filepath.Ext(name); extname != "" {
-		name = name[:-len(extname)]
+		name = name[:len(name)-len(extname)]
 	}
 	return f.Register(name, string(filedata), funcs)
 }

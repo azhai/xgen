@@ -30,6 +30,7 @@ func FormatGolangCode(src []byte) ([]byte, error) {
 
 // SaveCodeToFile 将go代码保存到文件
 func SaveCodeToFile(filename string, codeText []byte) ([]byte, error) {
+	utils.MkdirForFile(filename)
 	err := ioutil.WriteFile(filename, codeText, utils.DefaultFileMode)
 	return codeText, err
 }
