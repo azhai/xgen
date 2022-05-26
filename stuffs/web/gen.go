@@ -12,13 +12,13 @@ var (
 	tmpls = templater.NewFactory("./stuffs/web/")
 )
 
-func GenFile(data map[string]any, dest, dir string, names ...string) (err error) {
+func GenFile(data map[string]any, dest string, names ...string) (err error) {
 	var content []byte
 	for _, name := range names {
 		if content, err = tmpls.Render(name, data); err != nil {
 			return
 		}
-		filename := filepath.Join(dest, dir, name+".go")
+		filename := filepath.Join(dest, name+".go")
 		fmt.Println(">", filename)
 		if _, err = rewrite.WriteGolangFilePrettify(filename, content); err != nil {
 			return

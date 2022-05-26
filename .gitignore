@@ -14,9 +14,6 @@
 .idea/
 .vscode/
 bin/
-models/*/*
 vendor/
 
 settings.hcl
-settings.json
-settings.yml

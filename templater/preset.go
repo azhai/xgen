@@ -145,6 +145,9 @@ var (
 		"@id-in": func(qr *xorm.Session, args ...any) *xorm.Session {
 			return qr.In("id", args...)
 		},
+		"@last": func(qr *xorm.Session, args ...any) *xorm.Session {
+			return xquery.Sequence(qr, true, args...)
+		},
 	}
 )
 

@@ -5,7 +5,7 @@ ifndef GOAMD64
 endif
 GOOS = $(shell uname -s | tr [A-Z] [a-z])
 ifeq ($(GOOS), darwin)
-	GOBIN = /usr/local/bin/go
+	GOBIN = /usr/local/go/bin/go
 	UPXBIN = /usr/local/bin/upx
 else
 	GOBIN = /usr/bin/go
