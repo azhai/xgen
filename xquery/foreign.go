@@ -112,20 +112,6 @@ func (q *LeftJoinQuery) AddLeftJoin(foreign ITableName, pkey, fkey, alias string
 	return q
 }
 
-func (q *LeftJoinQuery) Limit(limit int, start ...int) *LeftJoinQuery {
-	q.AddFilter(func(query *xorm.Session) *xorm.Session {
-		return query.Limit(limit, start...)
-	})
-	return q
-}
-
-func (q *LeftJoinQuery) OrderBy(order string) *LeftJoinQuery {
-	q.AddFilter(func(query *xorm.Session) *xorm.Session {
-		return query.OrderBy(order)
-	})
-	return q
-}
-
 // GetQuery 重新构建当前查询，因为每次 COUNT 和 FIND 等操作会释放查询（只有主表名还保留着）
 func (q *LeftJoinQuery) GetQuery() *xorm.Session {
 	buf := new(bytes.Buffer)
@@ -143,10 +129,7 @@ func (q *LeftJoinQuery) GetQuery() *xorm.Session {
 
 // Count 计数，由于左联接数量只跟主表有关，这里不去 Join
 func (q *LeftJoinQuery) Count(bean ...any) (int64, error) {
-	query := q.Session
-	for _, filter := range q.filters {
-		query = filter(query)
-	}
+	query := ApplyOptions(q.Session, q.filters)
 	return query.Count(bean...)
 }
 
@@ -161,8 +144,8 @@ func (q *LeftJoinQuery) FindAndCount(
 	return total, err
 }
 
-// FindPaginate 计数和翻页，只获取部分结果集
-func (q *LeftJoinQuery) FindPaginate(pageno, pagesize int,
+// FindPage 计数和翻页，只获取部分结果集
+func (q *LeftJoinQuery) FindPage(pageno, pagesize int,
 	rowsSlicePtr any, condiBean ...any) (int64, error) {
 	total, err := q.Count()
 	limit, offset := CalcPage(pageno, pagesize, int(total))

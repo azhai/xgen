@@ -59,10 +59,17 @@ func ApplyOptions(qr *xorm.Session, opts []QueryOption) *xorm.Session {
 	return qr
 }
 
-// Where 限定条件
+// WithWhere where查询
 func WithWhere(cond string, args ...any) QueryOption {
 	return func(qr *xorm.Session) *xorm.Session {
 		return qr.Where(cond, args...)
+	}
+}
+
+// WithRange in查询
+func WithRange(col string, args ...any) QueryOption {
+	return func(qr *xorm.Session) *xorm.Session {
+		return qr.In(col, args...)
 	}
 }
 
