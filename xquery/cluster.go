@@ -179,7 +179,7 @@ func (m *ClusterMixin) Next() bool {
 // ClusterQuery 分布式查询
 type ClusterQuery struct {
 	engine  *xorm.Engine
-	filters []FilterFunc
+	filters []QueryOption
 	*ClusterMixin
 	*xorm.Session
 }
@@ -199,11 +199,11 @@ func (q ClusterQuery) Quote(value string) string {
 }
 
 func (q *ClusterQuery) ClearFilters() *ClusterQuery {
-	q.filters = make([]FilterFunc, 0)
+	q.filters = make([]QueryOption, 0)
 	return q
 }
 
-func (q *ClusterQuery) AddFilter(filter FilterFunc) *ClusterQuery {
+func (q *ClusterQuery) AddFilter(filter QueryOption) *ClusterQuery {
 	q.filters = append(q.filters, filter)
 	return q
 }
@@ -230,10 +230,7 @@ func (q *ClusterQuery) GetTable() string {
 // GetQuery 重新构建当前查询，因为每次 COUNT 和 FIND 等操作会释放查询（只有主表名还保留着）
 func (q *ClusterQuery) GetQuery() *xorm.Session {
 	query := q.Session.Table(q.GetTable())
-	for _, filter := range q.filters {
-		query = filter(query)
-	}
-	return query
+	return ApplyOptions(query, q.filters)
 }
 
 // Count 计数，只查询当前表

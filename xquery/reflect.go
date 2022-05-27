@@ -24,7 +24,7 @@ func GetFinalType(v any) (rt reflect.Type) {
 	for {
 		switch rt.Kind() {
 		default:
-			break
+			return rt
 		case reflect.Ptr, reflect.Chan:
 			rt = rt.Elem()
 		case reflect.Array, reflect.Slice:
@@ -34,11 +34,10 @@ func GetFinalType(v any) (rt reflect.Type) {
 			if kk == reflect.String || kk <= reflect.Float64 {
 				rt = rt.Elem()
 			} else {
-				break
+				return rt
 			}
 		}
 	}
-	return
 }
 
 func SortedKeys(data any) (keys []string) {

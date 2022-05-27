@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/mitchellh/copystructure"
 	"xorm.io/xorm"
 )
 
@@ -13,52 +14,13 @@ const (
 )
 
 // BeanFunc 处理单行数据
-type BeanFunc = func(bean any) (int64, error)
-
-// FilterFunc 过滤查询
-type FilterFunc = func(qr *xorm.Session) *xorm.Session
+type BeanFunc func(bean any, col string) (int64, error)
 
 // ModifyFunc 修改操作，用于事务
-type ModifyFunc = func(tx *xorm.Session) (int64, error)
+type ModifyFunc func(tx *xorm.Session) (int64, error)
 
-// ScopeFunc 预置查询
-type ScopeFunc = func(qr *xorm.Session, args ...any) *xorm.Session
-
-// QueryOpts 查询附加条件
-type QueryOpts struct {
-	Bean   ITableName
-	Filter FilterFunc
-	Limit  int
-	Order  string
-	IsDesc bool
-}
-
-func (q QueryOpts) GetOrder() string {
-	if q.Order == "" {
-		return ""
-	}
-	if q.IsDesc {
-		return q.Order + " DESC"
-	} else {
-		return q.Order + " ASC"
-	}
-}
-
-func (q QueryOpts) Apply(query *xorm.Session) *xorm.Session {
-	if q.Bean != nil {
-		query = query.Table(q.Bean.TableName())
-	}
-	if q.Filter != nil {
-		query = q.Filter(query)
-	}
-	if q.Limit > 0 {
-		query = query.Limit(q.Limit)
-	}
-	if order := q.GetOrder(); order != "" {
-		query = query.OrderBy(order)
-	}
-	return query
-}
+// QueryOption 查询条件
+type QueryOption func(qr *xorm.Session) *xorm.Session
 
 // Qprintf 对参数先进行转义Quote
 func Qprintf(engine *xorm.Engine, format string, args ...any) string {
@@ -80,6 +42,46 @@ func ExecTx(engine *xorm.Engine, modify ModifyFunc) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// WithTable 限定数据表
+func WithTable(tableOrBean any) QueryOption {
+	return func(qr *xorm.Session) *xorm.Session {
+		return qr.Table(tableOrBean)
+	}
+}
+
+// ApplyOptions 使用查询条件
+func ApplyOptions(qr *xorm.Session, opts []QueryOption) *xorm.Session {
+	for _, opt := range opts {
+		qr = opt(qr)
+	}
+	return qr
+}
+
+// Where 限定条件
+func WithWhere(cond string, args ...any) QueryOption {
+	return func(qr *xorm.Session) *xorm.Session {
+		return qr.Where(cond, args...)
+	}
+}
+
+// WithOrderBy 限定排序
+func WithOrderBy(column string, desc bool) QueryOption {
+	return func(qr *xorm.Session) *xorm.Session {
+		orient := " ASC"
+		if desc {
+			orient = " DESC"
+		}
+		return qr.OrderBy(column + orient)
+	}
+}
+
+// WithLimit 限定最大行数
+func WithLimit(limit int, offset ...int) QueryOption {
+	return func(qr *xorm.Session) *xorm.Session {
+		return qr.Limit(limit, offset...)
+	}
 }
 
 // NegativeOffset 调整从后往前翻页
@@ -106,73 +108,103 @@ func CalcPage(pageno, pagesize, total int) (int, int) {
 	return pagesize, offset
 }
 
-// Paginate 分页查询
-func Paginate(query *xorm.Session, pageno, pagesize int) *xorm.Session {
-	var limit, offset int
-	if pagesize > 0 && pageno < 0 {
-		total, _ := query.Count()
-		limit, offset = CalcPage(pageno, pagesize, int(total))
-	} else {
-		limit, offset = CalcPage(pageno, pagesize, 0)
+// WithPage 分页查询
+func WithPage(pageno, pagesize int) QueryOption {
+	return func(qr *xorm.Session) *xorm.Session {
+		var limit, offset int
+		if pagesize > 0 && pageno < 0 {
+			total, _ := qr.Count()
+			limit, offset = CalcPage(pageno, pagesize, int(total))
+		} else {
+			limit, offset = CalcPage(pageno, pagesize, 0)
+		}
+		if limit >= 0 {
+			qr = qr.Limit(limit, offset)
+		}
+		return qr
 	}
-	if limit >= 0 {
-		query = query.Limit(limit, offset)
-	}
-	return query
 }
 
-// Sequence 排序查询
-func Sequence(query *xorm.Session, desc bool, args ...any) *xorm.Session {
-	opts := QueryOpts{IsDesc: desc}
-	if len(args) >= 1 && args[0] != nil {
-		opts.Filter = func(qr *xorm.Session) *xorm.Session {
-			return qr.Table(args[0])
-		}
-	}
-	if len(args) >= 2 {
-		if field, ok := args[1].(string); ok {
-			opts.Order = field
-		}
-	}
-	return opts.Apply(query)
+// Recursion 递归查询
+type Recursion struct {
+	orderCol string
+	isDesc   bool
+	pageSize int           // 单次查询最大行数
+	sleepGap time.Duration // 两次查询间的休眠时长
+	Bean     any
 }
 
-// Recursive 递归查询
-func Recursive(query *xorm.Session, opts QueryOpts, proc BeanFunc, msec int) (count int64, err error) {
-	if count, err = opts.Apply(query).Count(); err != nil || count == 0 {
+// NewRecursion 创建递归查询
+func NewRecursion(bean any, order string, desc bool, size, msec int) *Recursion {
+	gap := time.Duration(msec) * time.Millisecond
+	return &Recursion{
+		Bean:     bean,
+		orderCol: order, isDesc: desc,
+		pageSize: size, sleepGap: gap,
+	}
+}
+
+// IsEnough 没有更多行需要查询了
+func (r Recursion) IsEnough(n int) bool {
+	if n <= 0 {
+		return true
+	}
+	if r.pageSize > 0 && n < r.pageSize {
+		return true
+	}
+	return false
+}
+
+// All 递归查询
+func (r Recursion) All(eng *xorm.Engine, proc BeanFunc,
+	opts ...QueryOption) (count int64, err error) {
+	if model, ok := r.Bean.(ITableName); ok {
+		table := model.TableName()
+		opts = append(opts, WithTable(table))
+		if r.orderCol == "" {
+			r.orderCol = GetPrimarykey(eng, model).Name
+		}
+	}
+	// 查询符合条件的总行数
+	query := eng.NewSession()
+	count, err = ApplyOptions(query, opts).Count()
+	if err != nil || count == 0 {
 		return
 	}
-	if opts.Limit <= 0 && count > MaxReadSize {
-		opts.Limit = MaxReadSize
+	if r.pageSize <= 0 && count > MaxReadSize {
+		r.pageSize = MaxReadSize
 	}
+	opts = append(opts, WithLimit(r.pageSize))
+	opts = append(opts, WithOrderBy(r.orderCol, r.isDesc))
+
 	// 递归查询
 	id, rows := int64(0), new(xorm.Rows)
-	query = opts.Apply(query)
+	bean, _ := copystructure.Copy(r.Bean)
 	for err == nil {
 		n := 0
-		rows, err = query.Rows(opts.Bean)
+		rows, err = ApplyOptions(query, opts).Rows(r.Bean)
 		for rows.Next() {
 			n++
-			if err = rows.Scan(opts.Bean); err != nil {
+			if err = rows.Scan(bean); err != nil {
 				break
 			}
-			if id, err = proc(opts.Bean); err != nil {
+			if id, err = proc(bean, r.orderCol); err != nil {
 				break
 			}
 		}
 		err = rows.Close()
-		if n == 0 { // 没有数据
+		if r.IsEnough(n) { // 没有更多数据
 			return count, err
 		}
 
 		// 下一次查询
-		if msec > 0 {
-			time.Sleep(time.Duration(msec) * time.Millisecond)
+		if r.sleepGap > 0 {
+			time.Sleep(r.sleepGap)
 		}
-		if opts.IsDesc {
-			query = query.Where("id < ?", id)
+		if r.isDesc {
+			query = query.Where(r.orderCol+" < ?", id)
 		} else {
-			query = query.Where("id > ?", id)
+			query = query.Where(r.orderCol+" > ?", id)
 		}
 	}
 	return

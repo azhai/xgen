@@ -93,7 +93,7 @@ func ({{$class}}) TableName() string {
 
 import (
 	{{range $imp, $al := .Imports}}{{$al}} "{{$imp}}"{{end}}
-	"github.com/azhai/xgen/xquery"
+	xq "github.com/azhai/xgen/xquery"
 	"xorm.io/xorm"
 )
 {{end -}}
@@ -106,13 +106,14 @@ import (
 // the queries of {{$class}}
 // ------------------------------------------------------------
 
-func (m *{{$class}}) Load(where any, args ...any) (bool, error) {
-	return Table(m).Where(where, args...).Get(m)
+func (m *{{$class}}) Load(opts ...xq.QueryOption) (bool, error) {
+	opts = append(opts, xq.WithTable(m))
+	return Query(opts...).Get(m)
 }
 
 {{if ne $pkey "" -}}
 func (m *{{$class}}) Save(changes map[string]any) error {
-	return xquery.ExecTx(Engine(), func(tx *xorm.Session) (int64, error) {
+	return xq.ExecTx(Engine(), func(tx *xorm.Session) (int64, error) {
 		if changes == nil || m.{{$pkey}} == 0 {
 			{{if ne $created "" -}}changes["{{$created}}"] = time.Now()
 			{{else}}{{end -}}
@@ -134,31 +135,14 @@ import (
 	{{.AliasName}} "{{.NameSpace}}"
 
 	"github.com/azhai/xgen/dialect"
-	"github.com/azhai/xgen/xquery"
+	xq "github.com/azhai/xgen/xquery"
 	_ "{{.Import}}"
 	"xorm.io/xorm"
 )
 
 var (
 	engine *xorm.Engine
-	scopes = map[string]xquery.ScopeFunc{
-		"@id-in": func(qr *xorm.Session, args ...any) *xorm.Session {
-			return qr.In("id", args...)
-		},
-		"@last": func(qr *xorm.Session, args ...any) *xorm.Session {
-			return xquery.Sequence(qr, true, args...)
-		},
-	}
 )
-
-// AddScope 添加或禁用Scope
-func AddScope(name string, scp xquery.ScopeFunc) {
-	if strings.HasPrefix(name, "@") {
-		scopes[name] = scp
-	} else {
-		scopes["@"+name] = scp
-	}
-}
 
 // ConnectXorm 连接数据库
 func ConnectXorm(cfg dialect.ConnConfig) *xorm.Engine {
@@ -177,32 +161,15 @@ func Engine() *xorm.Engine {
 	return engine
 }
 
+// Query 生成查询
+func Query(opts ...xq.QueryOption) *xorm.Session {
+	qr := Engine().NewSession()
+	return xq.ApplyOptions(qr, opts)
+}
+
 // Quote 转义表名或字段名
 func Quote(value string) string {
 	return Engine().Quote(value)
-}
-
-// Table 查询某张数据表
-func Table(args ...any) *xorm.Session {
-	qr := Engine().NewSession()
-	if args == nil {
-		return qr
-	}
-	return qr.Table(args[0])
-}
-
-// Scope 构造查询
-func Scope(qr *xorm.Session, act string, args ...any) *xorm.Session {
-	if qr == nil {
-		qr = Engine().NewSession()
-	}
-	if !strings.HasPrefix(act, "@") {
-		return qr.Where(act, args...)
-	}
-	if scp, ok := scopes[act]; ok && scp != nil {
-		qr = scp(qr, args...)
-	}
-	return qr
 }
 
 // InsertBatch 写入多行数据
@@ -210,9 +177,10 @@ func InsertBatch(tableName string, rows []map[string]any) error {
 	if len(rows) == 0 {
 		return nil
 	}
-	return xquery.ExecTx(Engine(), func(tx *xorm.Session) (int64, error) {
+	modify := func(tx *xorm.Session) (int64, error) {
 		return tx.Table(tableName).Insert(rows)
-	})
+	}
+	return xq.ExecTx(Engine(), modify)
 }
 `
 

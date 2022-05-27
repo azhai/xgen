@@ -51,7 +51,7 @@ func (f ForeignTable) TableName() string {
 // LeftJoinQuery Left Join 联表查询
 type LeftJoinQuery struct {
 	engine      *xorm.Engine
-	filters     []FilterFunc
+	filters     []QueryOption
 	nativeTable string
 	Native      ITableName
 	ForeignKeys []string
@@ -77,11 +77,11 @@ func (q LeftJoinQuery) Quote(value string) string {
 }
 
 func (q *LeftJoinQuery) ClearFilters() *LeftJoinQuery {
-	q.filters = make([]FilterFunc, 0)
+	q.filters = make([]QueryOption, 0)
 	return q
 }
 
-func (q *LeftJoinQuery) AddFilter(filter FilterFunc) *LeftJoinQuery {
+func (q *LeftJoinQuery) AddFilter(filter QueryOption) *LeftJoinQuery {
 	q.filters = append(q.filters, filter)
 	return q
 }
@@ -130,10 +130,7 @@ func (q *LeftJoinQuery) OrderBy(order string) *LeftJoinQuery {
 func (q *LeftJoinQuery) GetQuery() *xorm.Session {
 	buf := new(bytes.Buffer)
 	buf.WriteString(Qprintf(q.engine, "%s.*", q.Native.TableName()))
-	query := q.Session
-	for _, filter := range q.filters {
-		query = filter(query)
-	}
+	query := ApplyOptions(q.Session, q.filters)
 	var cols []string
 	for _, fkey := range q.ForeignKeys {
 		foreign := q.Foreigns[fkey]

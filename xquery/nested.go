@@ -34,7 +34,7 @@ func (n NestedMixin) CountChildren() int {
 }
 
 // AncestorsFilter 找出所有直系祖先节点
-func (n NestedMixin) AncestorsFilter(backward bool) FilterFunc {
+func (n NestedMixin) AncestorsFilter(backward bool) QueryOption {
 	return func(query *xorm.Session) *xorm.Session {
 		query = query.Where("rgt > ? AND lft < ?", n.Rgt, n.Lft)
 		if backward { // 从子孙往祖先方向排序，即时间倒序
@@ -46,7 +46,7 @@ func (n NestedMixin) AncestorsFilter(backward bool) FilterFunc {
 }
 
 // ChildrenFilter 找出所有子孙节点
-func (n NestedMixin) ChildrenFilter(rank int, depthFirst bool) FilterFunc {
+func (n NestedMixin) ChildrenFilter(rank int, depthFirst bool) QueryOption {
 	return func(query *xorm.Session) *xorm.Session {
 		if n.Rgt > 0 && n.Lft > 0 { // 当前不是第0层，即具体某分支以下的节点
 			query = query.Where("rgt < ? AND lft > ?", n.Rgt, n.Lft)
