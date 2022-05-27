@@ -10,7 +10,7 @@ import (
 
 const (
 	MaxReadSize  = 3000 // 一次读取最大行数
-	MaxWriteSize = 200  // 一次读取最大行数
+	MaxWriteSize = 200  // 一次写入最大行数
 )
 
 // BeanFunc 处理单行数据

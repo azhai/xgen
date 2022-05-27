@@ -7,12 +7,13 @@ import (
 	"path/filepath"
 
 	"github.com/azhai/xgen/config"
+	xq "github.com/azhai/xgen/xquery"
 	"github.com/k0kubun/pp"
 	"github.com/klauspost/cpuid/v2"
 )
 
 const (
-	VERSION = "1.5.0"
+	VERSION = "1.6.0"
 )
 
 var (
@@ -26,12 +27,14 @@ var (
 
 // OptionConfig 自定义选项，一部分是命令行输入，一部分是配置文件解析
 type OptionConfig struct {
-	ExecAction  string
-	InterActive bool
-	NameSpace   string
-	OutputDir   string
-	Verbose     bool
-	Version     string `hcl:"version,optional" json:"version,omitempty"`
+	ExecAction   string
+	InterActive  bool
+	NameSpace    string
+	OutputDir    string
+	Verbose      bool
+	Version      string `hcl:"version,optional" json:"version,omitempty"`
+	MaxReadSize  int    `hcl:"max_read_size,optional" json:"max_read_size,omitempty"`
+	MaxWriteSize int    `hcl:"max_write_size,optional" json:"max_write_size,omitempty"`
 }
 
 func init() {
@@ -59,6 +62,13 @@ func GetOptions() (*OptionConfig, *config.RootConfig) {
 	if options.Version == "" {
 		options.Version = VERSION
 	}
+	if options.MaxReadSize == 0 {
+		options.MaxReadSize = xq.MaxReadSize
+	}
+	if options.MaxWriteSize == 0 {
+		options.MaxWriteSize = xq.MaxWriteSize
+	}
+
 	options.InterActive = interActive
 	if onlyRunDemo {
 		options.ExecAction = "demo"

@@ -6,6 +6,7 @@ import (
 
 	"github.com/azhai/xgen/config"
 	xutils "github.com/azhai/xgen/utils"
+	xq "github.com/azhai/xgen/xquery"
 	"github.com/k0kubun/pp"
 )
 
@@ -16,8 +17,10 @@ var (
 )
 
 type OptionConfig struct {
-	Host        string `hcl:"host,optional" json:"host,omitempty"`
-	Port        int    `hcl:"port" json:"port"`
+	Host         string `hcl:"host,optional" json:"host,omitempty"`
+	Port         int    `hcl:"port" json:"port"`
+	MaxReadSize  int    `hcl:"max_read_size,optional" json:"max_read_size,omitempty"`
+	MaxWriteSize int    `hcl:"max_write_size,optional" json:"max_write_size,omitempty"`
 }
 
 func init() {
@@ -42,6 +45,12 @@ func GetOptions() (*OptionConfig, *config.RootConfig) {
 	}
 	if serverPort > 0 {
 		options.Port = serverPort
+	}
+	if options.MaxReadSize == 0 {
+		options.MaxReadSize = xq.MaxReadSize
+	}
+	if options.MaxWriteSize == 0 {
+		options.MaxWriteSize = xq.MaxWriteSize
 	}
 	if config.Verbose() {
 		pp.Println(options)

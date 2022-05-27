@@ -82,11 +82,12 @@ func parseMsgData(body string) (data map[string]any) {
 // SaveMsgData 保存到数据库
 func SaveMsgData(opts *cmd.OptionConfig) {
 	var rows []map[string]any
-	table := (MessageModel{}).TableName()
+	// table := (db.MessageModel{}).TableName()
+	table := "t_message"
 	tick := time.Tick(1 * time.Second)
 	for {
 		select {
-		case t := <-tick:
+		case <-tick:
 			if len(rows) >= 0 { //每秒也入库
 				logErrorIf(db.InsertBatch(table, rows))
 				rows = nil
@@ -95,7 +96,7 @@ func SaveMsgData(opts *cmd.OptionConfig) {
 			if data != nil {
 				rows = append(rows, data)
 			}
-			if len(rows) >= options.BatchInsert { //超出长度也入库
+			if len(rows) >= opts.MaxWriteSize { //超出长度也入库
 				logErrorIf(db.InsertBatch(table, rows))
 				rows = nil
 			}
