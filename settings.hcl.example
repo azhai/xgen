@@ -28,6 +28,10 @@ conn "mysql" "default" {
     log_file = "./logs/$KEY.log"
 }
 
+conn "sqlite" "repo" {
+    path = "/home/ryan/gitea-repos/data/gitea.db"
+}
+
 conn "redis" "cache" {
     host = "127.0.0.1"
     database = 0

@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/azhai/xgen/models"
+
 	// db "github.com/azhai/xgen/models/default"
+	// "github.com/azhai/xgen/models/repo"
 	// "github.com/azhai/xgen/utils"
 	xq "github.com/azhai/xgen/xquery"
 	"xorm.io/xorm"
@@ -28,6 +30,13 @@ func WithCdrPair(fromid, toid int) xq.QueryOption {
 
 func runTheDemo() {
 	models.Setup()
+
+	// var row = map[string]any{}
+	// qr := repo.Query().Table("repository").Asc("id")
+	// if _, err := qr.Get(&row); err != nil {
+	// 	fmt.Println(err)
+	// }
+	// utils.PrintJson(row)
 
 	// var err error
 	// obj := new(db.CdrRecent)

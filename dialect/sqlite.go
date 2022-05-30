@@ -11,7 +11,7 @@ type Sqlite struct {
 
 // Name 驱动名
 func (Sqlite) Name() string {
-	return "sqlite"
+	return "sqlite3"
 }
 
 // ImporterPath 驱动支持库
