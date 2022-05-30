@@ -16,7 +16,7 @@ func main() {
 	runtime.GOMAXPROCS(1)
 	options, _ := cmd.GetOptions()
 	models.Setup()
-	go handlers.SaveMsgData(options)
+	go handlers.SaveMsgData(options.MaxWriteSize)
 
 	addr := fmt.Sprintf("%s:%d", options.Host, options.Port)
 	err := NewApp("{{.ProjName}}").Listen(addr)

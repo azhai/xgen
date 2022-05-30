@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/azhai/xgen/config"
-	xq "github.com/azhai/xgen/xquery"
 	"github.com/k0kubun/pp"
 	"github.com/klauspost/cpuid/v2"
 )
@@ -22,19 +21,19 @@ var (
 	onlyPrettifyCode bool   // 仅美化代码
 	onlyRunDemo      bool   // 运行样例代码
 	onlyRunSkel      bool   // 生成新项目
+	isForce          bool   // 覆盖文件
 	skelOutDir       string // 新项目文件夹
 )
 
 // OptionConfig 自定义选项，一部分是命令行输入，一部分是配置文件解析
 type OptionConfig struct {
-	ExecAction   string
-	InterActive  bool
-	NameSpace    string
-	OutputDir    string
-	Verbose      bool
-	Version      string `hcl:"version,optional" json:"version,omitempty"`
-	MaxReadSize  int    `hcl:"max_read_size,optional" json:"max_read_size,omitempty"`
-	MaxWriteSize int    `hcl:"max_write_size,optional" json:"max_write_size,omitempty"`
+	ExecAction  string
+	InterActive bool
+	NameSpace   string
+	OutputDir   string
+	IsForce     bool
+	Verbose     bool
+	Version     string `hcl:"version,optional" json:"version,omitempty"`
 }
 
 func init() {
@@ -49,6 +48,7 @@ func init() {
 	flag.BoolVar(&onlyPrettifyCode, "p", false, "仅美化代码")
 	flag.BoolVar(&onlyRunDemo, "r", false, "运行样例代码")
 	flag.BoolVar(&onlyRunSkel, "s", false, "运行样例代码")
+	flag.BoolVar(&isForce, "f", false, "覆盖文件")
 	config.Setup()
 }
 
@@ -62,14 +62,9 @@ func GetOptions() (*OptionConfig, *config.RootConfig) {
 	if options.Version == "" {
 		options.Version = VERSION
 	}
-	if options.MaxReadSize == 0 {
-		options.MaxReadSize = xq.MaxReadSize
-	}
-	if options.MaxWriteSize == 0 {
-		options.MaxWriteSize = xq.MaxWriteSize
-	}
 
 	options.InterActive = interActive
+	options.IsForce = isForce
 	if onlyRunDemo {
 		options.ExecAction = "demo"
 	} else if onlyApplyMixins {

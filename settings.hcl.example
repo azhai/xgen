@@ -1,16 +1,17 @@
 debug = true
 
 app "xgen" {
-    port = 8090
     log_level = "debug"
     log_dir = "./logs"
+    version = "3.1.4"
 }
 
 reverse "golang" {
     output_dir = "./models"
     name_space = "github.com/azhai/xgen/models"
     table_prefix = "*"
-    include_tables = ["t_*"]
+    include_tables = [ "t_*" ]
+    exclude_tables = [ "*_bak", "*_test" ]
 }
 
 repeat "mysql" {

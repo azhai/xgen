@@ -182,6 +182,17 @@ func InsertBatch(tableName string, rows []map[string]any) error {
 	}
 	return xq.ExecTx(Engine(), modify)
 }
+
+// UpdateBatch 更新多行数据
+func UpdateBatch(tableName, pkey string, ids any, changes map[string]any) error {
+	if len(changes) == 0 || ids == nil {
+		return nil
+	}
+	modify := func(tx *xorm.Session) (int64, error) {
+		return tx.Table(tableName).In(pkey, ids).Update(changes)
+	}
+	return xq.ExecTx(Engine(), modify)
+}
 `
 
 	/**********************************************************************/

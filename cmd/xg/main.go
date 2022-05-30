@@ -48,8 +48,9 @@ func main() {
 		}
 	}
 
+	skelBinName := "serv"
 	if opts.ExecAction == "skel" {
-		reverse.SkelProject(opts.OutputDir, opts.NameSpace, "serv")
+		reverse.SkelProject(opts.OutputDir, opts.NameSpace, skelBinName, opts.IsForce)
 	}
 	rver := reverse.NewGoReverser(settings.Reverse)
 	// 生成顶部目录下init单个文件
@@ -74,7 +75,7 @@ func main() {
 	wg.Wait()
 
 	fmt.Println("执行完成。")
-	reverse.CheckProject(opts.OutputDir, opts.NameSpace)
+	reverse.CheckProject(opts.OutputDir, opts.NameSpace, skelBinName)
 }
 
 // prettifyDir 美化目录下的go代码文件

@@ -76,6 +76,9 @@ func WithRange(col string, args ...any) QueryOption {
 // WithOrderBy 限定排序
 func WithOrderBy(column string, desc bool) QueryOption {
 	return func(qr *xorm.Session) *xorm.Session {
+		if column == "" {
+			return qr
+		}
 		orient := " ASC"
 		if desc {
 			orient = " DESC"
@@ -87,6 +90,9 @@ func WithOrderBy(column string, desc bool) QueryOption {
 // WithLimit 限定最大行数
 func WithLimit(limit int, offset ...int) QueryOption {
 	return func(qr *xorm.Session) *xorm.Session {
+		if limit <= 0 {
+			return qr
+		}
 		return qr.Limit(limit, offset...)
 	}
 }
@@ -215,4 +221,37 @@ func (r Recursion) All(eng *xorm.Engine, proc BeanFunc,
 		}
 	}
 	return
+}
+
+// ChannelUpdate 通过队列异步更新
+func ChannelUpdate[T any](ch <-chan T, size int, update func(ids []T) error) error {
+	if size <= 0 {
+		size = MaxWriteSize
+	}
+	errCh := make(chan error, 1) // 遇到一个错误就返回
+	go func(errCh chan<- error) {
+		var ids []T
+		defer func() {
+			if len(ids) > 0 { // 处理最后数量不足的一批
+				if err := update(ids); err != nil {
+					errCh <- err
+				}
+			}
+		}()
+		for id := range ch {
+			ids = append(ids, id)
+			if len(ids) > size { // 凑足数量就处理一批
+				if err := update(ids); err != nil {
+					errCh <- err
+				}
+				ids = nil
+			}
+		}
+	}(errCh)
+	select { // 防止阻塞进程
+	default:
+		return nil
+	case err := <-errCh:
+		return err
+	}
 }

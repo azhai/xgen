@@ -7,12 +7,15 @@ import (
 	"github.com/azhai/xgen/utils"
 )
 
-func CopyFiles(dest, src string, files ...string) (err error) {
+func CopyFiles(dest, src string, files map[string]string, force bool) (err error) {
 	var content []byte
-	for _, filename := range files {
-		destFile := filepath.Join(dest, filename)
+	for filename, toname := range files {
+		if toname == "" {
+			toname = filename
+		}
+		destFile := filepath.Join(dest, toname)
 		size := utils.MkdirForFile(destFile)
-		if size > 0 { //不要覆盖
+		if !force && size > 0 { //不要覆盖
 			continue
 		}
 		srcFile := filepath.Join(src, filename)
