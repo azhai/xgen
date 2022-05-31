@@ -138,8 +138,8 @@ func WithPage(pageno, pagesize int) QueryOption {
 	}
 }
 
-// Recursion 递归查询
-type Recursion struct {
+// RowIterator 递归查询
+type RowIterator struct {
 	orderCol string
 	isDesc   bool
 	pageSize int           // 单次查询最大行数
@@ -147,10 +147,10 @@ type Recursion struct {
 	Bean     any
 }
 
-// NewRecursion 创建递归查询
-func NewRecursion(bean any, order string, desc bool, size, msec int) *Recursion {
+// NewRowIterator 创建递归查询
+func NewRowIterator(bean any, order string, desc bool, size, msec int) *RowIterator {
 	gap := time.Duration(msec) * time.Millisecond
-	return &Recursion{
+	return &RowIterator{
 		Bean:     bean,
 		orderCol: order, isDesc: desc,
 		pageSize: size, sleepGap: gap,
@@ -158,7 +158,7 @@ func NewRecursion(bean any, order string, desc bool, size, msec int) *Recursion 
 }
 
 // IsEnough 没有更多行需要查询了
-func (r Recursion) IsEnough(n int) bool {
+func (r RowIterator) IsEnough(n int) bool {
 	if n <= 0 {
 		return true
 	}
@@ -169,7 +169,7 @@ func (r Recursion) IsEnough(n int) bool {
 }
 
 // All 递归查询
-func (r Recursion) All(eng *xorm.Engine, proc BeanFunc,
+func (r RowIterator) All(eng *xorm.Engine, proc BeanFunc,
 	opts ...QueryOption) (count int64, err error) {
 	if model, ok := r.Bean.(ITableName); ok {
 		table := model.TableName()
@@ -224,8 +224,8 @@ func (r Recursion) All(eng *xorm.Engine, proc BeanFunc,
 	return
 }
 
-// ChannelUpdate 通过队列异步更新
-func ChannelUpdate[T any](ch <-chan T, size int, update func(ids []T) error) error {
+// RowChannel 通过队列异步更新
+func RowChannel[T any](ch <-chan T, size int, update func(ids []T) error) error {
 	if size <= 0 {
 		size = MaxWriteSize
 	}

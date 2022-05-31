@@ -68,14 +68,17 @@ func main() {
 			defer wg.Done()
 			err := reverseDb(rver, cfg, opts)
 			if err != nil {
+				fmt.Println("xx", err)
 				panic(err)
 			}
 		}(rver.Clone(), cfg)
 	}
 	wg.Wait()
 
-	fmt.Println("执行完成。")
-	reverse.CheckProject(opts.OutputDir, opts.NameSpace, skelBinName)
+	fmt.Println("执行完成。", opts.ExecAction)
+	if opts.ExecAction == "skel" {
+		reverse.CheckProject(opts.OutputDir, opts.NameSpace, skelBinName)
+	}
 }
 
 // prettifyDir 美化目录下的go代码文件
