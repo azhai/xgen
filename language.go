@@ -31,7 +31,7 @@ type (
 )
 
 const ( // 约定大于配置
-	FIXED_STR_MAX_SIZE = 255 // 固定字符串最大长度
+	FixedStrMaxSize = 255 // 固定字符串最大长度
 
 	invalidKind kind = iota
 	boolKind
@@ -42,18 +42,18 @@ const ( // 约定大于配置
 	stringKind
 	uintKind
 
-	XORM_TAG_NAME        = "xorm"
-	XORM_TAG_NOT_NULL    = "notnull"
-	XORM_TAG_AUTO_INCR   = "autoincr"
-	XORM_TAG_PRIMARY_KEY = "pk"
-	XORM_TAG_UNIQUE      = "unique"
-	XORM_TAG_INDEX       = "index"
+	XormTagName       = "xorm"
+	XormTagNotNull    = "notnull"
+	XormTagAutoIncr   = "autoincr"
+	XormTagPrimaryKey = "pk"
+	XormTagUnique     = "unique"
+	XormTagIndex      = "index"
 )
 
 var (
 	errBadComparisonType = errors.New("invalid type for comparison")
-	errBadComparison     = errors.New("incompatible types for comparison")
-	errNoComparison      = errors.New("missing argument for comparison")
+	// errBadComparison     = errors.New("incompatible types for comparison")
+	// errNoComparison      = errors.New("missing argument for comparison")
 
 	TypeOfString  = reflect.TypeOf("")
 	TypeOfBytes   = reflect.TypeOf([]byte{})
@@ -74,7 +74,7 @@ var (
 			"GetSinglePKey":    getSinglePKey,
 			"GetCreatedColumn": getCreatedColumn,
 		},
-		Formatter: rewrite.WriteGolangFileCleanImports,
+		Formatter: rewrite.WriteGolangFilePrettify,
 		Importter: genGoImports,
 		Packager:  genNameSpace,
 	}
@@ -138,7 +138,7 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 		rtype, rtstr = TypeOfBytes, "[]byte"
 	case schemas.Varchar, schemas.NVarchar, schemas.TinyText, schemas.Text,
 		schemas.NText, schemas.MediumText, schemas.LongText:
-		if st.DefaultLength == 0 || st.DefaultLength > FIXED_STR_MAX_SIZE {
+		if st.DefaultLength == 0 || st.DefaultLength > FixedStrMaxSize {
 			rtstr = "xutils.NullString"
 		}
 		//case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
@@ -292,17 +292,17 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 	var res []string
 	if !col.Nullable {
 		if !isIdPk {
-			res = append(res, XORM_TAG_NOT_NULL)
+			res = append(res, XormTagNotNull)
 		}
 	}
 	if col.IsPrimaryKey {
-		res = append(res, XORM_TAG_PRIMARY_KEY)
+		res = append(res, XormTagPrimaryKey)
 	}
 	if col.Default != "" {
 		res = append(res, "default "+col.Default)
 	}
 	if col.IsAutoIncrement {
-		res = append(res, XORM_TAG_AUTO_INCR)
+		res = append(res, XormTagAutoIncr)
 	}
 
 	if col.SQLType.IsTime() {
@@ -330,9 +330,9 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		index := table.Indexes[name]
 		var uistr string
 		if index.Type == schemas.UniqueType {
-			uistr = XORM_TAG_UNIQUE
+			uistr = XormTagUnique
 		} else if index.Type == schemas.IndexType {
-			uistr = XORM_TAG_INDEX
+			uistr = XormTagIndex
 		}
 		if len(index.Cols) > 1 {
 			uistr += "(" + index.Name + ")"
@@ -342,7 +342,7 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 
 	res = append(res, GetColTypeString(col))
 	if len(res) > 0 {
-		return fmt.Sprintf(`%s:"%s"`, XORM_TAG_NAME, strings.Join(res, " "))
+		return fmt.Sprintf(`%s:"%s"`, XormTagName, strings.Join(res, " "))
 	}
 	return ""
 }

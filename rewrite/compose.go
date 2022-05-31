@@ -39,23 +39,23 @@ func NewComposer() *Composer {
 // GlobalComposer 公共嵌入器，带有xquery的两个mixins
 func GlobaltComposer() *Composer {
 	cps := &Composer{
-		subNames:  []string{"xquery.NestedMixin", "xquery.TimeMixin"},
+		subNames:  []string{"xq.NestedMixin", "xq.TimeMixin"},
 		subModels: make(map[string]*ModelSummary),
 	}
-	cps.subModels["xquery.NestedMixin"] = &ModelSummary{
-		Name:   "xquery.NestedMixin",
+	cps.subModels["xq.NestedMixin"] = &ModelSummary{
+		Name:   "xq.NestedMixin",
 		Import: "github.com/azhai/xgen/xquery",
-		Alias:  "",
+		Alias:  "xq",
 		FieldLines: []string{
 			"Lft   int `json:\"lft\" xorm:\"notnull default 0 comment('左边界') INT(10)\"`           // 左边界",
 			"Rgt   int `json:\"rgt\" xorm:\"notnull default 0 comment('右边界') index INT(10)\"`     // 右边界",
 			"Depth int `json:\"depth\" xorm:\"notnull default 1 comment('高度') index TINYINT(3)\"` // 高度",
 		},
 	}
-	cps.subModels["xquery.TimeMixin"] = &ModelSummary{
-		Name:   "xquery.TimeMixin",
+	cps.subModels["xq.TimeMixin"] = &ModelSummary{
+		Name:   "xq.TimeMixin",
 		Import: "github.com/azhai/xgen/xquery",
-		Alias:  "",
+		Alias:  "xq",
 		FieldLines: []string{
 			"CreatedAt time.Time `json:\"created_at\" xorm:\"created comment('创建时间') TIMESTAMP\"`       // 创建时间",
 			"UpdatedAt time.Time `json:\"updated_at\" xorm:\"updated comment('更新时间') TIMESTAMP\"`       // 更新时间",
@@ -269,7 +269,8 @@ func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, verbose bool) (needIm
 		if verbose {
 			fmt.Println("*", s.Name, " <- ", sub.Name)
 		}
-	} else if strings.HasPrefix(sub.Name, "xquery.") {
+	} else if strings.HasPrefix(sub.Name, "xq.") ||
+		strings.HasPrefix(sub.Name, "xquery.") {
 		return // 早于反向替换，避免陷入死胡同
 	} else if enums.IsSubsetList(sorted, sted, true) { // 反向替换
 		sub.ReplaceSummary(s)

@@ -20,10 +20,10 @@ import (
 )
 
 const ( // 约定大于配置
-	INIT_FILE_NAME   = "init"
-	CONN_FILE_NAME   = "conn"
-	SINGLE_FILE_NAME = "models"
-	QUERY_FILE_NAME  = "queries"
+	InitFileName   = "init"
+	ConnFileName   = "conn"
+	SingleFileName = "models"
+	QueryFileName  = "queries"
 )
 
 // ReverseConfig table反转为model配置
@@ -45,7 +45,7 @@ type ReverseConfig struct {
 
 // GetTablePrefixes 获取可用表名前缀
 func (c ReverseConfig) GetTablePrefixes() []string {
-	prefixes := []string{}    // 不使用表名前缀
+	var prefixes []string     // 不使用表名前缀
 	if c.TablePrefix == "*" { // 使用所有的包含列标前缀
 		for _, pre := range c.IncludeTables {
 			pre = strings.TrimRight(pre, "*")
@@ -110,7 +110,7 @@ func (r *Reverser) SetOutDir(key string) string {
 	} else {
 		r.currOutDir = filepath.Join(r.target.OutputDir, key)
 	}
-	os.MkdirAll(r.currOutDir, utils.DefaultDirMode)
+	_ = os.MkdirAll(r.currOutDir, utils.DefaultDirMode)
 	return r.currOutDir
 }
 
@@ -131,7 +131,7 @@ func (r *Reverser) GenModelInitFile(tmplName string) error {
 	tmpl := templater.LoadTemplate(tmplName, nil)
 	codeText, err := templater.RenderTemplate(tmpl, data)
 	if err == nil {
-		filename := r.GetOutFileName(INIT_FILE_NAME)
+		filename := r.GetOutFileName(InitFileName)
 		formatter := r.GetFormatter()
 		_, err = formatter(filename, codeText)
 	}
@@ -160,7 +160,7 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 	tmpl := templater.LoadTemplate(tmplName, nil)
 	if codeText, err := templater.RenderTemplate(tmpl, data); err == nil {
 		formatter := r.GetFormatter()
-		filename := r.GetOutFileName(CONN_FILE_NAME)
+		filename := r.GetOutFileName(ConnFileName)
 		if _, err = formatter(filename, codeText); err != nil {
 			return isXorm, err
 		}
@@ -233,19 +233,19 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 		if err != nil {
 			return err
 		}
-		filename := r.GetOutFileName(SINGLE_FILE_NAME)
+		filename := r.GetOutFileName(SingleFileName)
 		if _, err = formatter(filename, codeText); err != nil {
 			return err
 		}
 
 		tmplName := r.target.GetTemplateName("query")
 		tmpl = templater.LoadTemplate(tmplName, funcs)
-		data["Imports"] = map[string]string{"xorm.io/xorm": ""}
+		data["Imports"] = map[string]string{}
 		codeText, err = templater.RenderTemplate(tmpl, data)
 		if err != nil {
 			return err
 		}
-		filename = r.GetOutFileName(QUERY_FILE_NAME)
+		filename = r.GetOutFileName(QueryFileName)
 		if _, err = formatter(filename, codeText); err != nil {
 			return err
 		}

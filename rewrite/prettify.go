@@ -48,43 +48,51 @@ func RewriteGolangFile(filename string, cleanImports bool) (changed bool, err er
 	return
 }
 
-func writeGolangFile(filename string, codeText []byte, cleanImports bool) ([]byte, error) {
+func writeGolangFile(filename string, codeText []byte,
+	cleanImports bool) (srcCode []byte, err error) {
 	// Formart/Prettify the code 格式化代码
-	srcCode, err := FormatGolangCode(codeText)
-	if err != nil {
-		//fmt.Println(err)
-		//fmt.Println(string(codeText))
-		return codeText, err
+	if srcCode, err = FormatGolangCode(codeText); err != nil {
+		srcCode = codeText
 	}
-	if cleanImports { // 清理 import
+	defer func() {
+		_, errSave := SaveCodeToFile(filename, srcCode)
+		if err == nil {
+			err = errSave
+		}
+	}()
+	if err == nil && cleanImports { // 清理 import
 		cs := NewCodeSource()
 		cs.SetSource(srcCode)
 		if cs.CleanImports() > 0 {
-			if srcCode, err = cs.GetContent(); err != nil {
-				return srcCode, err
-			}
+			srcCode, err = cs.GetContent()
 		}
 	}
-	if _, err = SaveCodeToFile(filename, srcCode); err != nil {
-		return srcCode, err
+	return
+}
+
+// splitImports 分组排序引用包
+func splitImports(filename string, srcCode []byte, err error) ([]byte, error) {
+	if err == nil {
+		var dstCode []byte
+		// Split the imports in two groups: go standard and the third parts
+		dstCode, err = imports.Process(filename, srcCode, nil)
+		if err == nil {
+			return SaveCodeToFile(filename, dstCode)
+		}
 	}
-	// Split the imports in two groups: go standard and the third parts 分组排序引用包
-	var dstCode []byte
-	dstCode, err = imports.Process(filename, srcCode, nil)
-	if err != nil {
-		return srcCode, err
-	}
-	return SaveCodeToFile(filename, dstCode)
+	return srcCode, err
 }
 
 // WriteGolangFilePrettify 美化并输出go代码到文件
 func WriteGolangFilePrettify(filename string, codeText []byte) ([]byte, error) {
-	return writeGolangFile(filename, codeText, false)
+	srcCode, err := writeGolangFile(filename, codeText, false)
+	return splitImports(filename, srcCode, err)
 }
 
 // WriteGolangFilePrettify 美化和整理导入，并输出go代码到文件
 func WriteGolangFileCleanImports(filename string, codeText []byte) ([]byte, error) {
-	return writeGolangFile(filename, codeText, true)
+	srcCode, err := writeGolangFile(filename, codeText, true)
+	return splitImports(filename, srcCode, err)
 }
 
 // RewritePackage 将包中的Go文件格式化，如果提供了pkgname则用作新包名
@@ -111,7 +119,8 @@ func RewritePackage(pkgpath, pkgname string) error {
 }
 
 // RewriteWithImports 注入导入声明
-func RewriteWithImports(pkg string, source []byte, imports map[string]string) (*CodeSource, error) {
+func RewriteWithImports(pkg string, source []byte,
+	imports map[string]string) (*CodeSource, error) {
 	cs := NewCodeSource()
 	if err := cs.SetPackage(pkg); err != nil {
 		return cs, err

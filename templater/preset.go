@@ -66,9 +66,8 @@ func GetConnConfig(key string) dialect.ConnConfig {
 	golangModelTemplate = fmt.Sprintf(`package {{.PkgName}}
 
 {{$ilen := len .Imports}}{{if gt $ilen 0 -}}
-import (
-	"database/sql"
-	{{range $imp, $al := .Imports}}{{$al}} "{{$imp}}"{{end}}
+import ({{- range $imp, $al := .Imports}}
+	{{$al}} "{{$imp}}"{{end}}
 )
 {{end -}}
 
@@ -92,7 +91,8 @@ func ({{$class}}) TableName() string {
 	golangQueryTemplate = `{{if not .MultipleFiles}}package {{.PkgName}}
 
 import (
-	{{range $imp, $al := .Imports}}{{$al}} "{{$imp}}"{{end}}
+	{{- range $imp, $al := .Imports}}{{$al}} "{{$imp}}"
+	{{end}}
 	xq "github.com/azhai/xgen/xquery"
 	"xorm.io/xorm"
 )
