@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"database/sql"
 	"fmt"
 
 	jsoniter "github.com/json-iterator/go"
@@ -24,5 +25,71 @@ func PrintJson(data any) (err error) {
 	if body, err = json.Marshal(data); err == nil {
 		fmt.Println(string(body))
 	}
+	return
+}
+
+// Obj2Dict 将对象转为map格式
+func Obj2Dict(obj any) (map[string]any, error) {
+	dict := map[string]any{}
+	body, err := json.Marshal(obj)
+	if err == nil {
+		err = json.Unmarshal(body, &dict)
+	}
+	return dict, err
+}
+
+// MarshalJSON json编码
+func MarshalJSON[T any](value T, valid bool) ([]byte, error) {
+	if valid {
+		return json.Marshal(value)
+	} else {
+		return json.Marshal(nil)
+	}
+}
+
+// UnmarshalJSON json解码
+func UnmarshalJSON[T any](data []byte, value *T) (bool, error) {
+	if err := json.Unmarshal(data, value); err != nil {
+		return false, err
+	}
+	return value != nil, nil
+}
+
+type NullInt64 struct {
+	sql.NullInt64
+}
+
+func (v NullInt64) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(v.Int64, v.Valid)
+}
+
+func (v *NullInt64) UnmarshalJSON(data []byte) (err error) {
+	v.Valid, err = UnmarshalJSON(data, &v.Int64)
+	return
+}
+
+type NullString struct {
+	sql.NullString
+}
+
+func (v NullString) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(v.String, v.Valid)
+}
+
+func (v *NullString) UnmarshalJSON(data []byte) (err error) {
+	v.Valid, err = UnmarshalJSON(data, &v.String)
+	return
+}
+
+type NullTime struct {
+	sql.NullTime
+}
+
+func (v NullTime) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(v.Time, v.Valid)
+}
+
+func (v *NullTime) UnmarshalJSON(data []byte) (err error) {
+	v.Valid, err = UnmarshalJSON(data, &v.Time)
 	return
 }

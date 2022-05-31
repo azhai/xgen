@@ -139,7 +139,7 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 	case schemas.Varchar, schemas.NVarchar, schemas.TinyText, schemas.Text,
 		schemas.NText, schemas.MediumText, schemas.LongText:
 		if st.DefaultLength == 0 || st.DefaultLength > FIXED_STR_MAX_SIZE {
-			rtstr = "sql.NullString"
+			rtstr = "xutils.NullString"
 		}
 		//case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
 		//	rtstr = rtype.String()
@@ -238,10 +238,11 @@ func genGoImports(tables map[string]*schemas.Table) map[string]string {
 	for _, table := range tables {
 		for _, col := range table.Columns() {
 			s := type2string(col)
-			if s == "time.Time" {
+			if s == "time.Time" || s == "xutils.NullTime" {
 				imports["time"] = ""
-			} else if s == "sql.NullString" {
-				// imports["database/sql"] = ""
+			}
+			if strings.HasPrefix(s, "xutils.Null") {
+				imports["github.com/azhai/xgen/utils"] = "xutils"
 			}
 		}
 	}

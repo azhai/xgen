@@ -190,6 +190,7 @@ func (r Recursion) All(eng *xorm.Engine, proc BeanFunc,
 	opts = append(opts, WithLimit(r.pageSize))
 	opts = append(opts, WithOrderBy(r.orderCol, r.isDesc))
 
+	// TODO: 只获取int64主键的情况
 	// 递归查询
 	id, rows := int64(0), new(xorm.Rows)
 	bean, _ := copystructure.Copy(r.Bean)
@@ -229,18 +230,19 @@ func ChannelUpdate[T any](ch <-chan T, size int, update func(ids []T) error) err
 		size = MaxWriteSize
 	}
 	errCh := make(chan error, 1) // 遇到一个错误就返回
+	defer close(errCh)
 	go func(errCh chan<- error) {
 		var ids []T
-		defer func() {
+		defer func() { // TODO: 永远不会执行这里
 			if len(ids) > 0 { // 处理最后数量不足的一批
-				if err := update(ids); err != nil {
-					errCh <- err
-				}
+				errCh <- update(ids)
+			} else {
+				errCh <- nil
 			}
 		}()
 		for id := range ch {
 			ids = append(ids, id)
-			if len(ids) > size { // 凑足数量就处理一批
+			if len(ids) >= size { // 凑足数量就处理一批
 				if err := update(ids); err != nil {
 					errCh <- err
 				}
