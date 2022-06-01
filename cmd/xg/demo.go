@@ -29,6 +29,8 @@ func WithCdrPair(fromid, toid int) xq.QueryOption {
 func runTheDemo() {
 	models.Setup()
 
+	demo1()
+
 	// var err error
 	// fromid := 4705930
 	// obj := new(db.CdrRecent)
@@ -69,4 +71,14 @@ func runTheDemo() {
 	// }
 
 	fmt.Println("执行完成。")
+}
+
+func demo1() {
+	start, end, step := 1, 88, 10
+	temp := start + step
+	for temp < end {
+		fmt.Println(start, "->", temp)
+		start, temp = temp, temp+step
+	}
+	fmt.Println(start, "->", end)
 }
