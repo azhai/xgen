@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	xutils "github.com/azhai/xgen/utils"
+
 	"github.com/mitchellh/copystructure"
 	"xorm.io/xorm"
 )
@@ -138,7 +140,7 @@ func WithPage(pageno, pagesize int) QueryOption {
 	}
 }
 
-// RowIterator 递归查询
+// RowIterator 迭代查询
 type RowIterator struct {
 	orderCol string
 	isDesc   bool
@@ -147,8 +149,11 @@ type RowIterator struct {
 	Bean     any
 }
 
-// NewRowIterator 创建递归查询
+// NewRowIterator 创建迭代查询
 func NewRowIterator(bean any, order string, desc bool, size, msec int) *RowIterator {
+	if size <= 0 {
+		size = MaxReadSize
+	}
 	gap := time.Duration(msec) * time.Millisecond
 	return &RowIterator{
 		Bean:     bean,
@@ -168,9 +173,8 @@ func (r RowIterator) IsEnough(n int) bool {
 	return false
 }
 
-// All 递归查询
-func (r RowIterator) All(eng *xorm.Engine, proc BeanFunc,
-	opts ...QueryOption) (count int64, err error) {
+// prepare 准备查询范围条件
+func (r *RowIterator) prepare(eng *xorm.Engine, opts []QueryOption) []QueryOption {
 	if model, ok := r.Bean.(ITableName); ok {
 		table := model.TableName()
 		opts = append(opts, WithTable(table))
@@ -179,81 +183,189 @@ func (r RowIterator) All(eng *xorm.Engine, proc BeanFunc,
 		}
 	}
 	// 查询符合条件的总行数
-	query := eng.NewSession()
-	count, err = ApplyOptions(query, opts).Count()
-	if err != nil || count == 0 {
-		return
-	}
-	if r.pageSize <= 0 && count > MaxReadSize {
-		r.pageSize = MaxReadSize
-	}
-	opts = append(opts, WithLimit(r.pageSize))
-	opts = append(opts, WithOrderBy(r.orderCol, r.isDesc))
+	opts = append(opts, WithLimit(r.pageSize), WithOrderBy(r.orderCol, r.isDesc))
+	return opts
+}
 
-	// TODO: 只获取int64主键的情况
-	// 递归查询
-	id, rows := int64(0), new(xorm.Rows)
-	bean, _ := copystructure.Copy(r.Bean)
+// IterBean 迭代查询对象
+func (r RowIterator) IterBean(qr *xorm.Session, proc BeanFunc,
+	opts []QueryOption) (count int64, err error) {
+	rows := new(xorm.Rows)
+	id, n := int64(0), 0
 	for err == nil {
-		n := 0
-		rows, err = ApplyOptions(query, opts).Rows(r.Bean)
+		n = 0
+		rows, err = ApplyOptions(qr, opts).Rows(r.Bean)
 		for rows.Next() {
 			n++
-			if err = rows.Scan(bean); err != nil {
+			bean, _ := copystructure.Copy(r.Bean)
+			if err = rows.Scan(bean); err != nil || bean == nil {
 				break
 			}
 			if id, err = proc(bean, r.orderCol); err != nil {
 				break
 			}
 		}
-		err = rows.Close()
-		if r.IsEnough(n) { // 没有更多数据
-			return count, err
+		// 计数，关闭本次结果集
+		count += int64(n)
+		if errClose := rows.Close(); errClose != nil {
+			err = errClose
 		}
-
+		if err != nil || r.IsEnough(n) { // 没有更多数据
+			return
+		}
 		// 下一次查询
 		if r.sleepGap > 0 {
 			time.Sleep(r.sleepGap)
 		}
 		if r.isDesc {
-			query = query.Where(r.orderCol+" < ?", id)
+			qr = qr.Where(r.orderCol+" < ?", id)
 		} else {
-			query = query.Where(r.orderCol+" > ?", id)
+			qr = qr.Where(r.orderCol+" > ?", id)
 		}
 	}
 	return
 }
 
-// RowChannel 通过队列异步更新
-func RowChannel[T any](ch <-chan T, size int, update func(ids []T) error) error {
+// IterCol 迭代查询主键
+func (r RowIterator) IterCol(qr *xorm.Session, proc BeanFunc,
+	col string, opts []QueryOption) (count int64, err error) {
+	if col == "" {
+		col = r.orderCol
+	}
+	var lst []int64
+	id, n := int64(0), 0
+	for err == nil {
+		err = ApplyOptions(qr, opts).Cols(col).Find(&lst)
+		if n = len(lst); n > 0 {
+			_, err = proc(lst, col)
+			count += int64(n)
+		}
+		if n == 0 || r.IsEnough(n) { // 没有更多数据
+			return
+		}
+		id = lst[n-1]
+		lst = lst[:0] // 清空但不回收容量
+		// 下一次查询
+		if r.sleepGap > 0 {
+			time.Sleep(r.sleepGap)
+		}
+		if r.isDesc {
+			qr = qr.Where(r.orderCol+" < ?", id)
+		} else {
+			qr = qr.Where(r.orderCol+" > ?", id)
+		}
+	}
+	return
+}
+
+// FindIndex 迭代查询主键列表，后累计总行数
+func (r *RowIterator) FindIndex(eng *xorm.Engine, proc BeanFunc,
+	col string, opts ...QueryOption) (count int64, err error) {
+	opts = r.prepare(eng, opts)
+	qr := eng.NewSession()
+	count, err = r.IterCol(qr, proc, col, opts)
+	return
+}
+
+// FindAll 迭代查询每行，后累计总行数
+func (r *RowIterator) FindAll(eng *xorm.Engine, proc BeanFunc,
+	opts ...QueryOption) (count int64, err error) {
+	opts = r.prepare(eng, opts)
+	qr := eng.NewSession()
+	count, err = r.IterBean(qr, proc, opts)
+	return
+}
+
+// FindCount 迭代查询，先查询总行数
+func (r *RowIterator) FindCount(eng *xorm.Engine, proc BeanFunc,
+	opts ...QueryOption) (count int64, err error) {
+	opts = r.prepare(eng, opts)
+	qr := eng.NewSession()
+	count, err = ApplyOptions(qr, opts).Count()
+	if err != nil || count == 0 { // 没有符合条件的数据行
+		return
+	}
+	_, err = r.IterBean(qr, proc, opts)
+	return
+}
+
+// RowChannel 队列异步操作
+type RowChannel struct {
+	dataCh chan any
+	*RowIterator
+}
+
+// NewRowChannel 创建迭代查询
+func NewRowChannel(iter *RowIterator) *RowChannel {
+	return &RowChannel{RowIterator: iter}
+}
+
+// Update 通用队列生产和消费
+func (r *RowChannel) Update(eng *xorm.Engine, proc BeanFunc,
+	consume func(val any), col string, opts []QueryOption) error {
+	r.dataCh = make(chan any)
+	errCh := make(chan error, 1)  // 遇到一个错误就返回
+	go func(errCh chan<- error) { // 生产者放入协程，消费者才不会漏掉最后一个元素
+		var err error
+		if col == "" {
+			_, err = r.FindAll(eng, proc, opts...)
+		} else {
+			_, err = r.FindIndex(eng, proc, col, opts...)
+		}
+		errCh <- err // 不用判断nil
+		close(r.dataCh)
+	}(errCh)
+	for val := range r.dataCh {
+		consume(val)
+	}
+	return <-errCh
+}
+
+// UpdateIndex 消费主键列表
+func (r *RowChannel) UpdateIndex(eng *xorm.Engine, consume func(val any),
+	col string, opts ...QueryOption) error {
+	if col == "" {
+		col = r.RowIterator.orderCol
+	}
+	proc := func(bean any, col string) (int64, error) {
+		r.dataCh <- bean
+		return 0, nil
+	}
+	return r.Update(eng, proc, consume, col, opts)
+}
+
+// UpdateAll 消费每行字典
+func (r *RowChannel) UpdateAll(eng *xorm.Engine, consume func(val any),
+	opts ...QueryOption) error {
+	proc := func(bean any, col string) (int64, error) {
+		row, err := xutils.Obj2Dict(bean)
+		if err != nil {
+			return 0, err
+		}
+		r.dataCh <- row
+		if id, ok := row[col]; ok {
+			return xutils.JsonInt64(id), nil
+		}
+		return 0, err
+	}
+	return r.Update(eng, proc, consume, "", opts)
+}
+
+// UpdateSlice 批量更新
+func UpdateSlice[T any](dataCh <-chan T, size int, batch func(lst []T) error) (err error) {
 	if size <= 0 {
 		size = MaxWriteSize
 	}
-	errCh := make(chan error, 1) // 遇到一个错误就返回
-	defer close(errCh)
-	go func(errCh chan<- error) {
-		var ids []T
-		defer func() { // TODO: 永远不会执行这里
-			if len(ids) > 0 { // 处理最后数量不足的一批
-				errCh <- update(ids)
-			} else {
-				errCh <- nil
-			}
-		}()
-		for id := range ch {
-			ids = append(ids, id)
-			if len(ids) >= size { // 凑足数量就处理一批
-				if err := update(ids); err != nil {
-					errCh <- err
-				}
-				ids = nil
-			}
+	var lst []T
+	for val := range dataCh {
+		lst = append(lst, val)
+		if len(lst) >= size { // 凑足数量就处理一批
+			err = batch(lst)
+			lst = lst[:0]
 		}
-	}(errCh)
-	select { // 防止阻塞进程
-	default:
-		return nil
-	case err := <-errCh:
-		return err
 	}
+	if len(lst) > 0 { // 最后一批
+		err = batch(lst)
+	}
+	return
 }

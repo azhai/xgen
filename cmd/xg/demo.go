@@ -4,10 +4,8 @@ import (
 	"fmt"
 
 	"github.com/azhai/xgen/models"
-
 	// db "github.com/azhai/xgen/models/default"
-	// "github.com/azhai/xgen/models/repo"
-	// "github.com/azhai/xgen/utils"
+
 	xq "github.com/azhai/xgen/xquery"
 	"xorm.io/xorm"
 )
@@ -31,36 +29,44 @@ func WithCdrPair(fromid, toid int) xq.QueryOption {
 func runTheDemo() {
 	models.Setup()
 
-	// var row = map[string]any{}
-	// qr := repo.Query().Table("repository").Asc("id")
-	// if _, err := qr.Get(&row); err != nil {
-	// 	fmt.Println(err)
-	// }
-	// utils.PrintJson(row)
-
 	// var err error
+	// fromid := 4705930
 	// obj := new(db.CdrRecent)
-	// opt := xq.WithOrderBy("id", true)
-	// if _, err = obj.Load(opt); err != nil {
-	// 	panic(err)
-	// }
-	// utils.PrintJson(obj)
+	// opt1, opt2 := xq.WithTable(obj.TableName()), WithCdrUser(fromid)
+	// bean := new(db.CdrRecentCore)
+	// rit := xq.NewRowIterator(bean, "id", true, 15, 50)
 
-	// opt1 := xq.WithTable(obj.TableName())
-	// opt2 := WithCdrUser(obj.Fromid)
+	// var count int64
 	// proc := func(bean any, col string) (int64, error) {
 	// 	obj := bean.(*db.CdrRecentCore)
-	// 	fmt.Print(obj.Id, " >> ")
-	// 	utils.PrintJson(obj)
-	// 	return int64(obj.Id), nil
+	// 	fmt.Println(">", obj.Id, obj.MsgTime)
+	// 	return obj.Id, nil
 	// }
-	// bean, count := new(db.CdrRecentCore), int64(0)
-	// rec := xq.NewRecursion(bean, "id", true, 100, 100)
-	// count, err = rec.All(db.Engine(), proc, opt1, opt2)
+	// count, err = rit.FindAll(db.Engine(), proc, opt1, opt2)
 	// if err != nil {
 	// 	panic(err)
 	// }
 	// fmt.Println(count)
+
+	// fmt.Println("--------------------------------------------------")
+
+	// rch := xq.NewRowChannel(rit)
+	// consume1 := func(val any) {
+	// 	row := val.(map[string]any)
+	// 	fmt.Println(row["id"], row["msg_time"])
+	// }
+	// rch.UpdateAll(db.Engine(), consume1, opt1, opt2)
+
+	// fmt.Println("--------------------------------------------------")
+
+	// consume2 := func(val any) {
+	// 	ids := val.([]int64)
+	// 	fmt.Println("<", ids)
+	// }
+	// err = rch.UpdateIndex(db.Engine(), consume2, "id", opt1, opt2)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	fmt.Println("执行完成。")
 }

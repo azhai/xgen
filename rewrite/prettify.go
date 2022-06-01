@@ -48,6 +48,7 @@ func RewriteGolangFile(filename string, cleanImports bool) (changed bool, err er
 	return
 }
 
+// writeGolangFile 将代码整理后写入文件
 func writeGolangFile(filename string, codeText []byte,
 	cleanImports bool) (srcCode []byte, err error) {
 	// Formart/Prettify the code 格式化代码

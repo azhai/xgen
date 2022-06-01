@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/azhai/xgen/utils"
+
 	"xorm.io/xorm"
 	"xorm.io/xorm/schemas"
 )
@@ -29,11 +31,12 @@ type ITableComment interface {
 }
 
 // NewNullString string 与 NullString 相互转换
-func NewNullString(word string) sql.NullString {
-	return sql.NullString{String: word, Valid: word != ""}
+func NewNullString(word string) utils.NullString {
+	str := sql.NullString{String: word, Valid: word != ""}
+	return utils.NullString{NullString: str}
 }
 
-func GetNullString(data sql.NullString) (word string) {
+func GetNullString(data utils.NullString) (word string) {
 	if data.Valid {
 		word = data.String
 	}

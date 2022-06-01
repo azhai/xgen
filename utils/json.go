@@ -28,6 +28,11 @@ func PrintJson(data any) (err error) {
 	return
 }
 
+// JsonInt 将被json解码为float64转回整数
+func JsonInt64(val any) int64 {
+	return int64(val.(float64))
+}
+
 // Obj2Dict 将对象转为map格式
 func Obj2Dict(obj any) (map[string]any, error) {
 	dict := map[string]any{}
@@ -55,6 +60,7 @@ func UnmarshalJSON[T any](data []byte, value *T) (bool, error) {
 	return value != nil, nil
 }
 
+// NullInt64 可为空整数
 type NullInt64 struct {
 	sql.NullInt64
 }
@@ -68,6 +74,21 @@ func (v *NullInt64) UnmarshalJSON(data []byte) (err error) {
 	return
 }
 
+// NullFloat64 可空浮点数
+type NullFloat64 struct {
+	sql.NullFloat64
+}
+
+func (v NullFloat64) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(v.Float64, v.Valid)
+}
+
+func (v *NullFloat64) UnmarshalJSON(data []byte) (err error) {
+	v.Valid, err = UnmarshalJSON(data, &v.Float64)
+	return
+}
+
+// // NullFloat64 可空字符串
 type NullString struct {
 	sql.NullString
 }
@@ -81,6 +102,7 @@ func (v *NullString) UnmarshalJSON(data []byte) (err error) {
 	return
 }
 
+// NullTime 可为空时间
 type NullTime struct {
 	sql.NullTime
 }
