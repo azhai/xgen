@@ -92,6 +92,10 @@ type Language struct {
 	Packager  Packager
 }
 
+func escapeTag(value string) string {
+	return strings.ReplaceAll(value, "#", "\\u0023")
+}
+
 func basicKind(v reflect.Value) (kind, error) {
 	switch v.Kind() {
 	case reflect.Bool:
@@ -299,7 +303,8 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		res = append(res, XormTagPrimaryKey)
 	}
 	if col.Default != "" {
-		res = append(res, "default "+col.Default)
+		value := escapeTag(col.Default) // 默认值脱敏
+		res = append(res, "default "+value)
 	}
 	if col.IsAutoIncrement {
 		res = append(res, XormTagAutoIncr)
@@ -317,6 +322,7 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 	}
 
 	if comm := utils.TruncateText(col.Comment, 50); comm != "" {
+		comm = template.HTMLEscapeString(comm) // 备注脱敏
 		res = append(res, fmt.Sprintf("comment('%s')", comm))
 	}
 
@@ -342,7 +348,8 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 
 	res = append(res, GetColTypeString(col))
 	if len(res) > 0 {
-		return fmt.Sprintf(`%s:"%s"`, XormTagName, strings.Join(res, " "))
+		tagValue := strings.Join(res, " ")
+		return fmt.Sprintf(`%s:"%s"`, XormTagName, tagValue)
 	}
 	return ""
 }
