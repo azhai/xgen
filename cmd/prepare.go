@@ -47,7 +47,7 @@ func init() {
 	flag.StringVar(&skelOutDir, "o", "../example", "新项目文件夹")
 	flag.BoolVar(&onlyPrettifyCode, "p", false, "仅美化代码")
 	flag.BoolVar(&onlyRunDemo, "r", false, "运行样例代码")
-	flag.BoolVar(&onlyRunSkel, "s", false, "运行样例代码")
+	flag.BoolVar(&onlyRunSkel, "s", false, "生成新项目")
 	flag.BoolVar(&isForce, "f", false, "覆盖文件")
 	config.Setup()
 }
