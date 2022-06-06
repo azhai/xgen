@@ -126,6 +126,9 @@ func (c *Composer) ParseAndMixinFile(filename string, verbose bool) error {
 			summary.IsExists = true
 		} else {
 			for _, sub := range c.SubstituteSummary(summary, verbose) {
+				if sub.Alias == "#" { // 重复的mixin会产生#别名
+					sub.Alias = ""
+				}
 				imports[sub.Import] = sub.Alias
 			}
 		}
