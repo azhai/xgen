@@ -16,6 +16,7 @@ import (
 	"github.com/azhai/xgen/templater"
 	"github.com/azhai/xgen/utils"
 
+	"github.com/pkg/errors"
 	"xorm.io/xorm/schemas"
 )
 
@@ -291,6 +292,7 @@ func ApplyDirMixins(currDir string, verbose bool) (err error) {
 	for _, filename := range notTestFiles {
 		err = cps.ParseAndMixinFile(filename, verbose)
 		if err != nil {
+			err = errors.Wrap(err, "ParseAndMixin failed")
 			return
 		}
 	}

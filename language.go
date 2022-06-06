@@ -93,7 +93,7 @@ type Language struct {
 }
 
 func escapeTag(value string) string {
-	return strings.ReplaceAll(value, "#", "\\u0023")
+	return strings.ReplaceAll(value, "#", "")
 }
 
 func basicKind(v reflect.Value) (kind, error) {
@@ -303,8 +303,7 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		res = append(res, XormTagPrimaryKey)
 	}
 	if col.Default != "" {
-		value := escapeTag(col.Default) // 默认值脱敏
-		res = append(res, "default "+value)
+		res = append(res, "default "+col.Default)
 	}
 	if col.IsAutoIncrement {
 		res = append(res, XormTagAutoIncr)
@@ -348,7 +347,7 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 
 	res = append(res, GetColTypeString(col))
 	if len(res) > 0 {
-		tagValue := strings.Join(res, " ")
+		tagValue := escapeTag(strings.Join(res, " ")) // 脱敏处理
 		return fmt.Sprintf(`%s:"%s"`, XormTagName, tagValue)
 	}
 	return ""
