@@ -16,10 +16,11 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/mattn/go-sqlite3 v1.14.13
 	github.com/mitchellh/copystructure v1.2.0
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
 	go.uber.org/zap v1.21.0
 	golang.org/x/tools v0.1.10
-	xorm.io/xorm v1.3.0
+	xorm.io/xorm v1.3.1
 )
 
 require (
@@ -52,5 +53,5 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	xorm.io/builder v0.3.10 // indirect
+	xorm.io/builder v0.3.11 // indirect
 )

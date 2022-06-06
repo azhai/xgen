@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/azhai/xgen/utils"
+	"github.com/pkg/errors"
 )
 
 // GetNameList 获取多个标识的名称列表
@@ -136,9 +137,13 @@ func NewCodeParser() *CodeParser {
 func NewFileParser(filename string) (cp *CodeParser, err error) {
 	cp = NewCodeParser()
 	if cp.Source, err = ioutil.ReadFile(filename); err != nil {
+		err = errors.Wrap(err, "Read file failed "+filename)
 		return
 	}
 	cp.Fileast, err = parser.ParseFile(cp.Fileset, filename, nil, parser.ParseComments)
+	if err != nil {
+		err = errors.Wrap(err, "Parse file failed "+filename)
+	}
 	return
 }
 

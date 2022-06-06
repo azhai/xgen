@@ -9,6 +9,7 @@ import (
 
 	"github.com/azhai/xgen/utils"
 	"github.com/azhai/xgen/utils/enums"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -143,6 +144,9 @@ func (c *Composer) ParseAndMixinFile(filename string, verbose bool) error {
 		} else {
 			fmt.Println("-", filename)
 		}
+	}
+	if err != nil {
+		err = errors.Wrap(err, "ResetImports failed "+filename)
 	}
 	return err
 }
@@ -316,7 +320,7 @@ func AddFormerMixins(cps *Composer, filename, nameSpace, alias string) []string 
 		} else {
 			summary.Name = fmt.Sprintf("%s.%s", alias, name)
 		}
-		summary.ParseFields(cp, node)
+		_ = summary.ParseFields(cp, node)
 		cps.RegisterSubstitute(summary)
 		mixinNames = append(mixinNames, summary.Name)
 	}
