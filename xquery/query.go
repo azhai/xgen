@@ -46,19 +46,19 @@ func ExecTx(engine *xorm.Engine, modify ModifyFunc) error {
 	return tx.Commit()
 }
 
-// WithTable 限定数据表
-func WithTable(tableOrBean any) QueryOption {
-	return func(qr *xorm.Session) *xorm.Session {
-		return qr.Table(tableOrBean)
-	}
-}
-
 // ApplyOptions 使用查询条件
 func ApplyOptions(qr *xorm.Session, opts []QueryOption) *xorm.Session {
 	for _, opt := range opts {
 		qr = opt(qr)
 	}
 	return qr
+}
+
+// WithTable 限定数据表
+func WithTable(tableOrBean any) QueryOption {
+	return func(qr *xorm.Session) *xorm.Session {
+		return qr.Table(tableOrBean)
+	}
 }
 
 // WithWhere where查询

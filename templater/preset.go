@@ -114,7 +114,9 @@ func (m *{{$class}}) Load(opts ...xq.QueryOption) (bool, error) {
 {{if ne $pkey "" -}}
 func (m *{{$class}}) Save(changes map[string]any) error {
 	return xq.ExecTx(Engine(), func(tx *xorm.Session) (int64, error) {
-		if changes == nil || m.{{$pkey}} == 0 {
+		if len(changes) == 0 {
+			return tx.Table(m).Insert(m)
+		} else if m.{{$pkey}} == 0 {
 			{{if ne $created "" -}}changes["{{$created}}"] = time.Now()
 			{{else}}{{end -}}
 			return tx.Table(m).Insert(changes)
@@ -164,7 +166,10 @@ func Engine() *xorm.Engine {
 // Query 生成查询
 func Query(opts ...xq.QueryOption) *xorm.Session {
 	qr := Engine().NewSession()
-	return xq.ApplyOptions(qr, opts)
+	if len(opts) > 0 {
+		return xq.ApplyOptions(qr, opts)
+	}
+	return qr
 }
 
 // Quote 转义表名或字段名
@@ -173,7 +178,7 @@ func Quote(value string) string {
 }
 
 // InsertBatch 写入多行数据
-func InsertBatch(tableName string, rows []map[string]any) error {
+func InsertBatch(tableName string, rows ...any) error {
 	if len(rows) == 0 {
 		return nil
 	}
