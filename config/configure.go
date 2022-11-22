@@ -5,16 +5,16 @@ import (
 
 	reverse "github.com/azhai/xgen"
 	"github.com/azhai/xgen/dialect"
-	"github.com/azhai/xgen/utils"
-
+	"github.com/azhai/xgen/utils/logging"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
+	"go.uber.org/zap"
 )
 
 var (
 	settings *RootConfig
-	logger   *utils.Logger
+	logger   *zap.SugaredLogger
 )
 
 // RootConfig 顶层配置，包含其他配置块
@@ -59,7 +59,7 @@ func ReadConfigFile(options any) (*RootConfig, error) {
 }
 
 // GetConfigLogger 获取配置中的Logger
-func GetConfigLogger() (*utils.Logger, error) {
+func GetConfigLogger() (*zap.SugaredLogger, error) {
 	if logger != nil {
 		return logger, nil
 	}
@@ -69,5 +69,7 @@ func GetConfigLogger() (*utils.Logger, error) {
 		app := settings.App
 		level, dir = app.LogLevel, app.LogDir
 	}
-	return utils.NewLogger(level, dir), err
+	cfg := logging.NewDefaultConfig()
+	cfg.MinLevel = level
+	return logging.NewLogger(cfg, dir), err
 }

@@ -29,7 +29,7 @@ conn "mysql" "default" {
 }
 
 conn "sqlite" "repo" {
-    path = "/home/ryan/gitea-repos/data/gitea.db"
+    path = "/data/gitea-repos/data/gitea.db"
 }
 
 conn "redis" "cache" {
