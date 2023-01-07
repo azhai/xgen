@@ -6,15 +6,16 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // 可用字符串
 const (
-	UNICODE_LATIN   = "\u0020-\u007e"                   //英文和主要符号
-	UNICODE_PUNCT   = "\u2000-\u206f"                   //标点符号
-	UNICODE_CHINESE = "\u4e00-\u9fa5"                   //常用两万汉字
-	UNICODE_SPACE   = " \t\r\n"                         //空白类
-	UNICODE_NUMBER  = "0-9〇一二三四五六七八九十百千万亿零壹贰叁肆伍陆柒捌玖拾佰仟" //数字类
+	UNICODE_LATIN   = "\u0020-\u007e"                                              // 英文和主要符号
+	UNICODE_PUNCT   = "\u2000-\u206f"                                              // 标点符号
+	UNICODE_CHINESE = "\u4e00-\u9fa5"                                              // 常用两万汉字
+	UNICODE_SPACE   = " \t\r\n"                                                    // 空白类
+	UNICODE_NUMBER  = "0-9〇一二三四五六七八九十百千万亿零壹贰叁肆伍陆柒捌玖拾佰仟" // 数字类
 )
 
 // 字符串比较方式
@@ -66,15 +67,17 @@ func ReduceSpaces(s string) string {
 }
 
 // TruncateText 截断长文本
-func TruncateText(s string, size int) string {
-	if s == "" {
-		return ""
+func TruncateText(msg string, size int) string {
+	if size <= 3 || len(msg) <= size {
+		return msg
 	}
-	text := []rune(s) // 防止将中文从中间截断
-	if size > 0 && len(text) > size {
-		s = string(text[:size-3]) + "..."
+	// 可能含有中文，要以rune计算结尾
+	for i := size - 3; i >= 0; i-- {
+		if utf8.RuneStart(msg[i]) {
+			return msg[:i] + "..."
+		}
 	}
-	return ReduceSpaces(s)
+	return "..."
 }
 
 // 用:号连接两个部分，如果后一部分也存在的话
