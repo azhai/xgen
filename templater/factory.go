@@ -45,10 +45,10 @@ func DiffPluralize(word, suffix string) string {
 }
 
 // LoadTemplate 根据名称或路径加载模板对象
-func LoadTemplate(name_or_path string, funcs template.FuncMap) *template.Template {
-	tmpl := theFactory.GetTemplate(name_or_path, funcs)
+func LoadTemplate(nameOrPath string, funcs template.FuncMap) *template.Template {
+	tmpl := theFactory.GetTemplate(nameOrPath, funcs)
 	if tmpl == nil {
-		tmpl = theFactory.RegisterFile(name_or_path, funcs)
+		tmpl = theFactory.RegisterFile(nameOrPath, funcs)
 	}
 	return tmpl
 }
@@ -122,7 +122,7 @@ func (f *Factory) Register(name, content string, funcs template.FuncMap) *templa
 		tmpl = tmpl.Funcs(funcs)
 	}
 	f.presetTexts[name] = content
-	var err error //有可能所需的funcs不齐全，导致解析失败
+	var err error // 有可能所需的funcs不齐全，导致解析失败
 	if tmpl, err = tmpl.Parse(content); err == nil {
 		f.presetTmpls[name] = tmpl
 	}
@@ -131,7 +131,7 @@ func (f *Factory) Register(name, content string, funcs template.FuncMap) *templa
 
 // RegisterFile 注册模板文件
 func (f *Factory) RegisterFile(filename string, funcs template.FuncMap) *template.Template {
-	filedata, err := ioutil.ReadFile(filename)
+	fileData, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil
 	}
@@ -139,7 +139,7 @@ func (f *Factory) RegisterFile(filename string, funcs template.FuncMap) *templat
 	if extname := filepath.Ext(name); extname != "" {
 		name = name[:len(name)-len(extname)]
 	}
-	return f.Register(name, string(filedata), funcs)
+	return f.Register(name, string(fileData), funcs)
 }
 
 // Render 渲染指定模板

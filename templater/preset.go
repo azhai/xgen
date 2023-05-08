@@ -73,14 +73,13 @@ import ({{- range $imp, $al := .Imports}}
 
 {{range $table_name, $table := .Tables}}
 {{$class := TableMapper $table.Name}}
-// ------------------------------------------------------------
+
 // {{$class}} {{$table.Comment}}
-// ------------------------------------------------------------
 type {{$class}} struct { {{- range $table.ColumnsSeq}}{{$col := $table.GetColumn .}}
 	{{ColumnMapper $col.Name}} {{Type $col}} %s{{Tag $table $col true}}%s{{end}}
 }
 
-func ({{$class}}) TableName() string {
+func (*{{$class}}) TableName() string {
 	return "{{$table_name}}"
 }
 {{end}}
@@ -102,16 +101,15 @@ import (
 {{$class := TableMapper .Name -}}
 {{$pkey := GetSinglePKey . -}}
 {{$created := GetCreatedColumn . -}}
-// ------------------------------------------------------------
-// the queries of {{$class}}
-// ------------------------------------------------------------
 
+// Load the queries of {{$class}}
 func (m *{{$class}}) Load(opts ...xq.QueryOption) (bool, error) {
 	opts = append(opts, xq.WithTable(m))
 	return Query(opts...).Get(m)
 }
 
 {{if ne $pkey "" -}}
+// Save the queries of {{$class}}
 func (m *{{$class}}) Save(changes map[string]any) error {
 	return xq.ExecTx(Engine(), func(tx *xorm.Session) (int64, error) {
 		if len(changes) == 0 {

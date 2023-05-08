@@ -19,7 +19,7 @@ const (
 
 var (
 	MixinWildcards  = []string{"*Core", "*Mixin"} // 可注册的Mixin类名形式
-	globaltComposer = GlobaltComposer()           // 公共Mixins嵌入器
+	globaltComposer = GlobalComposer()            // 公共Mixins嵌入器
 )
 
 // Composer 是一个Model分析和嵌入工具
@@ -38,7 +38,7 @@ func NewComposer() *Composer {
 }
 
 // GlobalComposer 公共嵌入器，带有xquery的两个mixins
-func GlobaltComposer() *Composer {
+func GlobalComposer() *Composer {
 	cps := &Composer{
 		subNames:  []string{"xq.NestedMixin", "xq.TimeMixin"},
 		subModels: make(map[string]*ModelSummary),
@@ -122,7 +122,7 @@ func (c *Composer) ParseAndMixinFile(filename string, verbose bool) error {
 		}
 		summary := &ModelSummary{Name: node.GetName()}
 		_ = summary.ParseFields(cp, node)
-		if summary.Isomorph() {
+		if summary.Isomorphic() {
 			summary.IsExists = true
 		} else {
 			for _, sub := range c.SubstituteSummary(summary, verbose) {
@@ -178,11 +178,11 @@ type ModelSummary struct {
 	sortedFeatures []string
 	FieldLines     []string
 	IsChanged      bool
-	IsExists       bool //同构Model已存在
+	IsExists       bool // 同构Model已存在
 }
 
 // GetInnerCode 找出 model 内部代码，即在 {} 里面的内容
-func (s ModelSummary) GetInnerCode() string {
+func (s *ModelSummary) GetInnerCode() string {
 	var buf bytes.Buffer
 	for _, line := range s.FieldLines {
 		buf.WriteString(fmt.Sprintf("\t%s\n", line))
@@ -191,7 +191,7 @@ func (s ModelSummary) GetInnerCode() string {
 }
 
 // GetSortedFeatures 找出 model 的所有特征并排序
-func (s ModelSummary) GetSortedFeatures() []string {
+func (s *ModelSummary) GetSortedFeatures() []string {
 	if len(s.sortedFeatures) > 0 {
 		return s.sortedFeatures
 	}
@@ -207,8 +207,8 @@ func (s ModelSummary) GetSortedFeatures() []string {
 	return s.sortedFeatures
 }
 
-// Isomorph 已经是其他Model的同构体，没有嵌入的空间
-func (s *ModelSummary) Isomorph() bool {
+// Isomorphic 已经是其他Model的同构体，没有嵌入的空间
+func (s *ModelSummary) Isomorphic() bool {
 	features := s.GetSortedFeatures()
 	return len(features) == 1 && strings.HasSuffix(features[0], ":inline")
 }
@@ -267,7 +267,7 @@ func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, verbose bool) (needIm
 	// 函数 IsSubsetList(..., ..., true) 用于排除异名同构的Model
 	if enums.IsSubsetList(sted, sorted, false) { // 正向替换
 		s.ReplaceSummary(sub)
-		if len(sorted) == len(sted) { //完全相等
+		if len(sorted) == len(sted) { // 完全相等
 			s.IsExists = true
 		}
 		if sub.Import != "" {

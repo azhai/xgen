@@ -20,10 +20,12 @@ func Redis(connUrl string, otherAddrs ...string) redis.UniversalClient {
 	if err != nil {
 		panic(err)
 	}
-	addrs := []string{opts.Addr}
-	if len(otherAddrs) > 0 {
-		addrs = append(addrs, otherAddrs...)
+	if len(otherAddrs) == 0 {
+		conn = redis.NewClient(opts)
+		return conn
 	}
+
+	addrs := append([]string{opts.Addr}, otherAddrs...)
 	conn = redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs:       addrs,
 		Username:    opts.Username,
@@ -40,6 +42,9 @@ func Redis(connUrl string, otherAddrs ...string) redis.UniversalClient {
 
 // Client 获取当前redis连接
 func Client() redis.UniversalClient {
+	if conn == nil {
+		Redis("redis://127.0.0.1:6379")
+	}
 	return conn
 }
 
@@ -56,13 +61,8 @@ func NewRedisBase(ctx context.Context, name string, secs int) *RedisBase {
 		secs = LongTermExpire
 	}
 	return &RedisBase{
-		conn: conn, ctx: ctx, name: name, timeout: secs,
+		conn: Client(), ctx: ctx, name: name, timeout: secs,
 	}
-}
-
-// GetClient 获取redis连接
-func (r *RedisBase) GetClient() redis.UniversalClient {
-	return r.conn
 }
 
 // GetName 获取键名

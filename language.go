@@ -145,9 +145,9 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 		if st.DefaultLength == 0 || st.DefaultLength > FixedStrMaxSize {
 			rtstr = "xutils.NullString"
 		}
-		//case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
+		// case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
 		//	rtstr = rtype.String()
-		//case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
+		// case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
 		//	rtstr = rtype.String()
 	}
 	if rtstr == "" {
@@ -188,7 +188,7 @@ func trimAnyPrefix(word string, prefixes []string) string {
 	size := len(word)
 	for _, pre := range prefixes {
 		word = strings.TrimPrefix(word, pre)
-		if len(word) < size { //成功
+		if len(word) < size { // 成功
 			return word
 		}
 	}

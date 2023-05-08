@@ -22,7 +22,7 @@ func (t *ArgList) Add(args []string, uniq bool) int {
 		if t.Convert != nil {
 			arg = t.Convert(arg)
 		}
-		if uniq { //去重不需要计数
+		if uniq { // 去重不需要计数
 			t.args[arg] = 1
 		} else if val, ok := t.args[arg]; ok {
 			t.args[arg] = val + 1

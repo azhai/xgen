@@ -53,7 +53,7 @@ func ReadConfigFile(options any) (*RootConfig, error) {
 		if len(adds) > 0 {
 			settings.Conns = append(settings.Conns, adds...)
 		}
-		settings.Repeats = []dialect.RepeatConfig{} //避免重复生成
+		settings.Repeats = []dialect.RepeatConfig{} // 避免重复生成
 	}
 	return settings, err
 }

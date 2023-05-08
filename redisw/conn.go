@@ -59,13 +59,14 @@ func NewRedisWrapper() *RedisWrapper {
 }
 
 // NewRedisConn 根据配置连接redis
-// cfg = dialect.ConnConfig{
-// 	DSN: (dialect.Redis{
-// 		Host:     "127.0.0.1",
-// 		Database: 3,
-// 	}).BuildDSN(),
-// 	Password: "secrect",
-// }
+//
+//	cfg = dialect.ConnConfig{
+//		DSN: (dialect.Redis{
+//			Host:     "127.0.0.1",
+//			Database: 3,
+//		}).BuildDSN(),
+//		Password: "secrect",
+//	}
 func NewRedisConn(cfg dialect.ConnConfig) (redis.Conn, error) {
 	return NewRedisConnDb(cfg, -1)
 }

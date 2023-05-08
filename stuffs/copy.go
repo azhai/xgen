@@ -15,7 +15,7 @@ func CopyFiles(dest, src string, files map[string]string, force bool) (err error
 		}
 		destFile := filepath.Join(dest, toname)
 		size := utils.MkdirForFile(destFile)
-		if !force && size > 0 { //不要覆盖
+		if !force && size > 0 { // 不要覆盖
 			continue
 		}
 		srcFile := filepath.Join(src, filename)

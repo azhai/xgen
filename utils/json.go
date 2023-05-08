@@ -28,7 +28,7 @@ func PrintJson(data any) (err error) {
 	return
 }
 
-// JsonInt 将被json解码为float64转回整数
+// JsonInt64 将被json解码为float64转回整数
 func JsonInt64(val any) int64 {
 	return int64(val.(float64))
 }
@@ -65,7 +65,7 @@ type NullInt64 struct {
 	sql.NullInt64
 }
 
-func (v NullInt64) MarshalJSON() ([]byte, error) {
+func (v *NullInt64) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(v.Int64, v.Valid)
 }
 
@@ -79,7 +79,7 @@ type NullFloat64 struct {
 	sql.NullFloat64
 }
 
-func (v NullFloat64) MarshalJSON() ([]byte, error) {
+func (v *NullFloat64) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(v.Float64, v.Valid)
 }
 
@@ -88,12 +88,12 @@ func (v *NullFloat64) UnmarshalJSON(data []byte) (err error) {
 	return
 }
 
-// // NullFloat64 可空字符串
+// NullString 可空字符串
 type NullString struct {
 	sql.NullString
 }
 
-func (v NullString) MarshalJSON() ([]byte, error) {
+func (v *NullString) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(v.String, v.Valid)
 }
 
@@ -107,7 +107,7 @@ type NullTime struct {
 	sql.NullTime
 }
 
-func (v NullTime) MarshalJSON() ([]byte, error) {
+func (v *NullTime) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(v.Time, v.Valid)
 }
 

@@ -36,7 +36,7 @@ func (Mysql) QuoteIdent(ident string) string {
 // ChangeDb 切换数据库
 func (d *Mysql) ChangeDb(database string) (bool, error) {
 	d.Database = database
-	return true, nil //成功
+	return true, nil // 成功
 }
 
 // BuildDSN 生成DSN连接串

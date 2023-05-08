@@ -68,13 +68,13 @@ func OpenFile(path string, readonly, append bool) (fp *os.File, size int64, err 
 }
 
 // LineCount 使用 wc -l 计算有多少行
-func LineCount(fname string) int {
+func LineCount(filename string) int {
 	var num int
-	fname, err := filepath.Abs(fname)
+	filename, err := filepath.Abs(filename)
 	if err != nil {
 		return -1
 	}
-	out, err := exec.Command("wc", "-l", fname).Output()
+	out, err := exec.Command("wc", "-l", filename).Output()
 	if err != nil {
 		return -1
 	}

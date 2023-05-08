@@ -36,7 +36,7 @@ func (Postgres) QuoteIdent(ident string) string {
 // ChangeDb 切换数据库
 func (d *Postgres) ChangeDb(database string) (bool, error) {
 	d.Database = database
-	return true, nil //成功
+	return true, nil // 成功
 }
 
 // BuildDSN 生成DSN连接串

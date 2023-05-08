@@ -244,8 +244,13 @@ func (r *RedisSet) Move(dst, m string) bool {
 }
 
 // Rand 随机一个元素
-func (r *RedisSet) Rand() string {
-	op := r.conn.SRandMember(r.ctx, r.name)
+func (r *RedisSet) Rand(isPop bool) string {
+	var op *redis.StringCmd
+	if isPop {
+		op = r.conn.SPop(r.ctx, r.name)
+	} else {
+		op = r.conn.SRandMember(r.ctx, r.name)
+	}
 	if m, err := op.Result(); err == nil {
 		return m
 	}
@@ -253,8 +258,13 @@ func (r *RedisSet) Rand() string {
 }
 
 // RandN 随机多个元素
-func (r *RedisSet) RandN(n int) []string {
-	op := r.conn.SRandMemberN(r.ctx, r.name, int64(n))
+func (r *RedisSet) RandN(n int, isPop bool) []string {
+	var op *redis.StringSliceCmd
+	if isPop {
+		op = r.conn.SPopN(r.ctx, r.name, int64(n))
+	} else {
+		op = r.conn.SRandMemberN(r.ctx, r.name, int64(n))
+	}
 	if ms, err := op.Result(); err == nil {
 		return ms
 	}
