@@ -8,7 +8,7 @@ ifeq ($(GOOS), darwin)
 	GOBIN = /usr/local/go/bin/go
 	UPXBIN = /usr/local/bin/upx
 else
-	GOBIN = /usr/bin/go
+	GOBIN = /usr/local/bin/go
 	UPXBIN = /usr/bin/upx
 endif
 RELEASE = -s -w
