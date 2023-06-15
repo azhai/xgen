@@ -2,6 +2,7 @@ package dialect
 
 import (
 	"fmt"
+	"strings"
 )
 
 const PGSQL_DEFAULT_PORT uint16 = 5432
@@ -36,30 +37,25 @@ func (Postgres) QuoteIdent(ident string) string {
 // ChangeDb 切换数据库
 func (d *Postgres) ChangeDb(database string) (bool, error) {
 	d.Database = database
-	return true, nil //成功
+	return true, nil // 成功
 }
 
 // BuildDSN 生成DSN连接串
 func (d Postgres) BuildDSN() string {
-	dsn := "host=" + DIALECT_DEFAULT_HOST
+	addr := DIALECT_DEFAULT_HOST
 	if d.Host != "" {
-		dsn = "host=" + d.Host
+		addr = GetAddr(d.Host, d.Port)
 	}
-	if d.Port != 0 {
-		dsn += fmt.Sprintf(" port=%d", d.Port)
-	}
-	if d.Database != "" {
-		dsn += " dbname=" + d.Database
-	}
+	dsn := fmt.Sprintf("postgres://%s/%s?", addr, d.Database)
 	return dsn
 }
 
 // BuildFullDSN 生成带账号的完整DSN
 func (d Postgres) BuildFullDSN(username, password string) string {
-	dsn := d.BuildDSN()
-	if dsn != "" {
-		dsn += "user=" + username
-		dsn += "password='" + password + "'"
+	dsn, head := d.BuildDSN(), "postgres://"
+	if strings.HasPrefix(dsn, head) {
+		account := GetAccount(username, password)
+		dsn = head + account + "@" + dsn[len(head):]
 	}
 	return dsn
 }

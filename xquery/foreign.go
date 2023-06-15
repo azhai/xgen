@@ -72,7 +72,7 @@ func NewLeftJoinQuery(engine *xorm.Engine, native ITableName) *LeftJoinQuery {
 	}
 }
 
-func (q LeftJoinQuery) Quote(value string) string {
+func (q *LeftJoinQuery) Quote(value string) string {
 	return q.engine.Quote(value)
 }
 

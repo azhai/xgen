@@ -140,14 +140,16 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 	case schemas.TinyBlob, schemas.Blob, schemas.MediumBlob, schemas.LongBlob,
 		schemas.Bytea, schemas.Binary, schemas.VarBinary, schemas.UniqueIdentifier:
 		rtype, rtstr = TypeOfBytes, "[]byte"
-	case schemas.Varchar, schemas.NVarchar, schemas.TinyText, schemas.Text,
-		schemas.NText, schemas.MediumText, schemas.LongText:
-		if st.DefaultLength == 0 || st.DefaultLength > FixedStrMaxSize {
+	case schemas.Varchar, schemas.NVarchar:
+		if st.DefaultLength > FixedStrMaxSize {
 			rtstr = "xutils.NullString"
 		}
-		//case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
-		//	rtstr = rtype.String()
-		//case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
+	case schemas.TinyText, schemas.Text,
+		schemas.NText, schemas.MediumText, schemas.LongText:
+		rtstr = "xutils.NullString"
+		// case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
+		//	rtstr = rtype.String()2
+		// case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
 		//	rtstr = rtype.String()
 	}
 	if rtstr == "" {
@@ -188,7 +190,7 @@ func trimAnyPrefix(word string, prefixes []string) string {
 	size := len(word)
 	for _, pre := range prefixes {
 		word = strings.TrimPrefix(word, pre)
-		if len(word) < size { //成功
+		if len(word) < size { // 成功
 			return word
 		}
 	}
@@ -255,6 +257,9 @@ func genGoImports(tables map[string]*schemas.Table) map[string]string {
 
 func type2string(col *schemas.Column) string {
 	t, s := sqlType2Type(col.SQLType)
+	if s == "string" && col.Nullable {
+		s = "xutils.NullString"
+	}
 	if t != TypeOfBool {
 		return s
 	}
@@ -265,28 +270,26 @@ func type2string(col *schemas.Column) string {
 	return TypeOfInt.String()
 }
 
-func tag2string(table *schemas.Table, col *schemas.Column, genJson bool) string {
-	tj, tx := "", tagXorm(table, col)
-	if genJson {
-		tj = tagJson(col)
-	} else {
+func tag2string(table *schemas.Table, col *schemas.Column, names ...string) string {
+	tx := tagXorm(table, col)
+	if len(names) == 0 {
 		return tx
 	}
-	if tx == "" {
-		if tj == "" {
-			return ""
-		} else {
-			return tj
-		}
+	var ts []string
+	for _, name := range names {
+		ts = append(ts, tagCustom(col, name))
 	}
-	return tj + " " + tx
+	if tx != "" {
+		ts = append(ts, tx)
+	}
+	return strings.Join(ts, " ")
 }
 
-func tagJson(col *schemas.Column) string {
+func tagCustom(col *schemas.Column, name string) string {
 	if col.Name == "" {
 		return ""
 	}
-	return fmt.Sprintf(`json:"%s"`, col.Name)
+	return fmt.Sprintf(`%s:"%s"`, name, col.Name)
 }
 
 func tagXorm(table *schemas.Table, col *schemas.Column) string {

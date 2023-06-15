@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/azhai/xgen/config"
 	"github.com/k0kubun/pp"
@@ -12,7 +13,8 @@ import (
 )
 
 const (
-	VERSION = "1.6.0"
+	VERSION  = "1.7.0"
+	MegaByte = 1024 * 1024
 )
 
 var (
@@ -37,6 +39,10 @@ type OptionConfig struct {
 }
 
 func init() {
+	// 压舱石，阻止频繁GC
+	ballast := make([]byte, 256*MegaByte)
+	runtime.KeepAlive(ballast)
+
 	if level := os.Getenv("GOAMD64"); level == "" {
 		level = fmt.Sprintf("v%d", cpuid.CPU.X64Level())
 		fmt.Printf("请设置环境变量 export GOAMD64=%s\n\n", level)

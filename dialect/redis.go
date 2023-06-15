@@ -39,10 +39,10 @@ func (Redis) QuoteIdent(ident string) string {
 func (d *Redis) ChangeDb(database string) (bool, error) {
 	db, err := strconv.Atoi(database)
 	if err != nil {
-		return false, err //失败
+		return false, err // 失败
 	}
 	d.Database = db
-	return true, nil //成功
+	return true, nil // 成功
 }
 
 // BuildDSN 生成DSN连接串

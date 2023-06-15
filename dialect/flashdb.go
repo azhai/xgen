@@ -35,7 +35,7 @@ func (FlashDB) QuoteIdent(ident string) string {
 
 // ChangeDb 切换数据库
 func (FlashDB) ChangeDb(database string) (bool, error) {
-	return false, nil //不支持
+	return false, nil // 不支持
 }
 
 // BuildDSN 生成DSN连接串

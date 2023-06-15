@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-// 每次只保留当前行数据
+// LineReader 每次只保留当前行数据
 type LineReader struct {
 	err  error
 	line []byte
@@ -50,7 +50,7 @@ func (r *LineReader) Reading() bool {
 	return true
 }
 
-// 读取全部数据，按行组成列表
+// ReadLines 读取全部数据，按行组成列表
 func ReadLines(path string) ([]string, error) {
 	fp, _, err := OpenFile(path, true, false)
 	defer fp.Close()
@@ -66,7 +66,7 @@ func ReadLines(path string) ([]string, error) {
 	return result, scanner.Err()
 }
 
-// 读取文件末尾若干字节
+// ReadFileTail 读取文件末尾若干字节
 func ReadFileTail(path string, size int) ([]byte, error) {
 	fp, _, err := OpenFile(path, true, false)
 	if err != nil {

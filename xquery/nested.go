@@ -4,7 +4,7 @@ import (
 	"xorm.io/xorm"
 )
 
-var NESTED_EDGE_OFFSET = 2
+var NestedEdgeOffset = 2
 
 // NestedMixin 嵌套集合树
 type NestedMixin struct {
@@ -19,22 +19,22 @@ type NestedRow struct {
 	*NestedMixin        `json:",inline" xorm:"extends"`
 }
 
-func (n NestedMixin) GetDepth() int {
+func (n *NestedMixin) GetDepth() int {
 	return n.Depth
 }
 
 // IsLeaf 是否叶子节点
-func (n NestedMixin) IsLeaf() bool {
+func (n *NestedMixin) IsLeaf() bool {
 	return n.Rgt-n.Lft == 1
 }
 
 // CountChildren 有多少个子孙节点
-func (n NestedMixin) CountChildren() int {
+func (n *NestedMixin) CountChildren() int {
 	return (n.Rgt - n.Lft - 1) / 2
 }
 
 // AncestorsFilter 找出所有直系祖先节点
-func (n NestedMixin) AncestorsFilter(backward bool) QueryOption {
+func (n *NestedMixin) AncestorsFilter(backward bool) QueryOption {
 	return func(query *xorm.Session) *xorm.Session {
 		query = query.Where("rgt > ? AND lft < ?", n.Rgt, n.Lft)
 		if backward { // 从子孙往祖先方向排序，即时间倒序
@@ -46,7 +46,7 @@ func (n NestedMixin) AncestorsFilter(backward bool) QueryOption {
 }
 
 // ChildrenFilter 找出所有子孙节点
-func (n NestedMixin) ChildrenFilter(rank int, depthFirst bool) QueryOption {
+func (n *NestedMixin) ChildrenFilter(rank int, depthFirst bool) QueryOption {
 	return func(query *xorm.Session) *xorm.Session {
 		if n.Rgt > 0 && n.Lft > 0 { // 当前不是第0层，即具体某分支以下的节点
 			query = query.Where("rgt < ? AND lft > ?", n.Rgt, n.Lft)
@@ -86,8 +86,8 @@ func (n *NestedMixin) AddToParent(parent *NestedMixin, query *xorm.Session, tabl
 	}
 	n.Rgt = n.Lft + 1
 	if n.Depth > 1 {
-		err = MoveEdge(query, table, n.Lft, NESTED_EDGE_OFFSET)
-		parent.Rgt += NESTED_EDGE_OFFSET // 上面的数据更新使 parent.Rgt 变成脏数据
+		err = MoveEdge(query, table, n.Lft, NestedEdgeOffset)
+		parent.Rgt += NestedEdgeOffset // 上面的数据更新使 parent.Rgt 变成脏数据
 	}
 	return
 }

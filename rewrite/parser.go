@@ -69,12 +69,12 @@ func NewDeclNode(decl ast.Decl, offset int, position token.Pos) (n *DeclNode, er
 }
 
 // GetKind 声明节点种类
-func (n DeclNode) GetKind() string {
+func (n *DeclNode) GetKind() string {
 	return strings.Join(n.Kinds, ".")
 }
 
 // GetName 声明节点名称
-func (n DeclNode) GetName() string {
+func (n *DeclNode) GetName() string {
 	return strings.Join(n.Names, ", ")
 }
 

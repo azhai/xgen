@@ -31,15 +31,15 @@ func (Sqlite) QuoteIdent(ident string) string {
 
 // ChangeDb 切换数据库
 func (Sqlite) ChangeDb(database string) (bool, error) {
-	return false, nil //不支持
+	return false, nil // 不支持
 }
 
 // BuildDSN 生成DSN连接串
 func (d Sqlite) BuildDSN() string {
 	if d.IsMemory() {
-		return "file::memory:?cache=shared&"
+		return "file::memory:?xm=shared&"
 	}
-	return "file:" + d.Path + "?cache=shared&mode=rwc&"
+	return "file:" + d.Path + "?xm=shared&mode=rwc&"
 }
 
 // BuildFullDSN 生成带账号的完整DSN
