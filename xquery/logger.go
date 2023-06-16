@@ -2,7 +2,6 @@ package xquery
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/azhai/xgen/utils/logging"
 	"go.uber.org/zap"
@@ -19,9 +18,8 @@ type XormLogger struct {
 // NewXormLogger 创建日志
 func NewXormLogger(filename string) *XormLogger {
 	xl := &XormLogger{level: log.LOG_INFO, showSQL: true}
-	dirname, basename := filepath.Dir(filename), filepath.Base(filename)
-	cfg := logging.SingleFileConfig("info", basename)
-	xl.SugaredLogger = logging.NewLogger(cfg, dirname)
+	cfg := logging.SingleFileConfig("info", filename)
+	xl.SugaredLogger = logging.NewLogger(cfg, "")
 	return xl
 }
 

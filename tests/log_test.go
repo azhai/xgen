@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	cfg    = logging.SingleFileConfig("info", "access.log")
-	logger = logging.NewLogger(cfg, "./logs")
+	cfg    = logging.SingleFileConfig("info", "./logs/access.log")
+	logger = logging.NewLogger(cfg, "")
 )
 
 func NowTime() string {

@@ -150,10 +150,10 @@ func GetAbsPath(dir, file string, onlyFile bool) string {
 	if dir == "" && strings.HasPrefix(file, "std") {
 		return file
 	}
-	if strings.Contains(file, "%s") {
+	if strings.Contains(dir, "%s") {
 		file = fmt.Sprintf(dir, file)
 	} else {
-		file = fmt.Sprintf("%s/%s", dir, strings.TrimPrefix(file, "/"))
+		file = filepath.Join(dir, file)
 	}
 	u, err := url.Parse(file)
 	isFile := u.Scheme == "" || u.Scheme == "file"
