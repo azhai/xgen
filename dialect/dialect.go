@@ -173,6 +173,9 @@ func GetAccount(username, password string) string {
 	if username == "" {
 		return password
 	}
+	if password == "" {
+		return username
+	}
 	return fmt.Sprintf("%s:%s", username, password)
 }
 
