@@ -3,8 +3,13 @@
 package logging
 
 import (
+	"os"
 	"regexp"
 )
+
+func chown(_ string, _ os.FileInfo) error {
+	return nil
+}
 
 // ignoreWinDisk 忽略Windows盘符
 func ignoreWinDisk(absPath string) string {

@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/arriqaaq/flashdb v0.1.6
+	github.com/go-playground/form/v4 v4.2.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gobwas/glob v0.2.3

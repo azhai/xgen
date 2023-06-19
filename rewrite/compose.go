@@ -228,10 +228,10 @@ func (s *ModelSummary) Isomorphic() bool {
 	return len(features) == 1 && strings.HasSuffix(features[0], ":inline")
 }
 
-// GetSubstitute 使用inline tag代替原来的那些字段
-func (s *ModelSummary) GetSubstitute() string {
+// GetSubstitute 使用inline tag代替原来的那些字段，prefix可以是*星号
+func (s *ModelSummary) GetSubstitute(prefix string) string {
 	if s.Substitute == "" {
-		s.Substitute = fmt.Sprintf("*%s %s", s.Name, ModelExtends)
+		s.Substitute = fmt.Sprintf("%s%s %s", prefix, s.Name, ModelExtends)
 	}
 	return s.Substitute
 }
@@ -264,7 +264,7 @@ func (s *ModelSummary) ReplaceSummary(sub *ModelSummary) bool {
 			features = append(features, ft)
 			lines = append(lines, s.FieldLines[i])
 		} else if !find {
-			subst := sub.GetSubstitute()
+			subst := sub.GetSubstitute("")
 			features = append(features, GetLineFeature(subst))
 			lines = append(lines, subst)
 			find = true

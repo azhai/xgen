@@ -139,31 +139,43 @@ func GetLogPath(dir string, files []string) []string {
 	if dir = strings.TrimSpace(dir); dir == "/dev/null" {
 		return nil
 	}
+	var err error
 	for i, file := range files {
-		files[i] = GetAbsPath(dir, file, true)
+		if dir == "" && strings.HasPrefix(file, "std") {
+			files[i] = file
+			continue
+		}
+		if strings.Contains(dir, "%s") {
+			file = fmt.Sprintf(dir, file)
+		} else {
+			file = filepath.Join(dir, file)
+		}
+		if file, err = GetAbsPath(file, false); err == nil {
+			files[i] = file
+		}
 	}
 	return files
 }
 
 // GetAbsPath 使用真实的绝对路径
-func GetAbsPath(dir, file string, onlyFile bool) string {
-	if dir == "" && strings.HasPrefix(file, "std") {
-		return file
+func GetAbsPath(file string, onlyFile bool) (path string, err error) {
+	var u *url.URL
+	if u, err = url.Parse(file); err != nil {
+		return
 	}
-	if strings.Contains(dir, "%s") {
-		file = fmt.Sprintf(dir, file)
-	} else {
-		file = filepath.Join(dir, file)
+	var scheme string
+	if scheme = u.Scheme; scheme == "" {
+		scheme = "file"
 	}
-	u, err := url.Parse(file)
-	isFile := u.Scheme == "" || u.Scheme == "file"
-	if err == nil && isFile == false && onlyFile {
-		return file // 只能处理文件类型
+	if onlyFile && scheme == "file" {
+		path = file
+		return // 只能处理文件类型
 	}
-	path, _ := filepath.Abs(file)
+	u, err = url.Parse(file[len(u.Scheme)+3:])
+	path, _ = filepath.Abs(u.Path)
 	path = ignoreWinDisk(path)
-	if isFile == false { // 重新拼接
-		path = fmt.Sprintf("%s://%s?%s", u.Scheme, path, u.RawQuery)
+	if scheme != "file" { // 重新拼接
+		path = fmt.Sprintf("%s://%s?%s", scheme, path, u.RawQuery)
 	}
-	return path
+	return
 }
