@@ -27,7 +27,7 @@ var LogLevels = map[string]zapcore.Level{
 
 func init() {
 	// 注册rotate文件
-	zap.RegisterSink("rot", func(url *url.URL) (sink zap.Sink, err error) {
+	zap.RegisterSink("rotate", func(url *url.URL) (sink zap.Sink, err error) {
 		var decoder = form.NewDecoder()
 		sink = &RotateFile{Filename: url.Path, LocalTime: true, Compress: true}
 		err = decoder.Decode(&sink, url.Query())

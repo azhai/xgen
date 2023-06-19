@@ -9,7 +9,7 @@ import (
 
 var (
 	cfg    = logging.SingleFileConfig("info", "access.log")
-	logger = logging.NewLogger(cfg, "rot://./logs/%s?min=1&comp=0")
+	logger = logging.NewLogger(cfg, "rotate://./logs/%s?min=1&comp=0")
 )
 
 func NowTime() string {

@@ -147,7 +147,7 @@ func GetLogPath(dir string, files []string) []string {
 		}
 		if strings.Contains(dir, "%s") {
 			file = fmt.Sprintf(dir, file)
-		} else {
+		} else if dir != "" {
 			file = filepath.Join(dir, file)
 		}
 		if file, err = GetAbsPath(file, false); err == nil {
@@ -171,7 +171,8 @@ func GetAbsPath(file string, onlyFile bool) (path string, err error) {
 		path = file
 		return // 只能处理文件类型
 	}
-	u, err = url.Parse(file[len(u.Scheme)+3:])
+	// 去掉scheme，重新解析，以便接着处理相对路径问题
+	u, err = url.Parse(file[len(u.Scheme+"://"):])
 	path, _ = filepath.Abs(u.Path)
 	path = ignoreWinDisk(path)
 	if scheme != "file" { // 重新拼接
