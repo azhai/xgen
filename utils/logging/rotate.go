@@ -438,7 +438,7 @@ func (l *RotateFile) oldLogFiles() ([]logInfo, error) {
 
 // getTimeFormat use shortTimeFormat when cycle only
 func (l *RotateFile) getTimeFormat() string {
-	if l.Cycle != "" && l.max() > 0 {
+	if l.Cycle != "" && l.max() <= 0 {
 		return shortTimeFormat
 	}
 	return backupTimeFormat
