@@ -127,9 +127,10 @@ type RotateFile struct {
 	// using gzip. The default is not to perform compression.
 	Compress bool `json:"compress" yaml:"compress" form:"comp"`
 
-	size int64
-	file *os.File
-	mu   sync.Mutex
+	size    int64
+	modTime time.Time
+	file    *os.File
+	mu      sync.Mutex
 
 	millCh    chan bool
 	startMill sync.Once
@@ -156,19 +157,20 @@ func (l *RotateFile) Write(p []byte) (n int, err error) {
 	}
 
 	if l.file == nil {
-		if err = l.openExistingOrNew(len(p)); err != nil {
+		if err = l.openExistingOrNew(writeLen, maxSize); err != nil {
 			return 0, err
 		}
 	}
 
-	if maxSize > 0 && l.size+writeLen > maxSize {
-		if err := l.rotate(); err != nil {
+	if l.check(writeLen, maxSize) {
+		if err = l.rotate(); err != nil {
 			return 0, err
 		}
 	}
-
-	n, err = l.file.Write(p)
-	l.size += int64(n)
+	if n, err = l.file.Write(p); n > 0 {
+		l.size += int64(n)
+		l.modTime = currentTime()
+	}
 
 	return n, err
 }
@@ -215,6 +217,24 @@ func (l *RotateFile) rotate() error {
 	return nil
 }
 
+// check whether rotate is need
+func (l *RotateFile) check(writeLen, maxSize int64) bool {
+	if maxSize > 0 && l.size+writeLen >= maxSize {
+		return true
+	}
+	nowTime, ok := currentTime(), isCycle(l.Cycle)
+	if ok && isDiffDate(l.Cycle, l.modTime, nowTime) {
+		return true
+	}
+	if !ok && l.Minutely > 0 {
+		secs := int64(l.Minutely) * 60
+		if isDiffTime(secs, l.modTime, nowTime) {
+			return true
+		}
+	}
+	return false
+}
+
 // openNew opens a new log file for writing, moving any old log file out of the
 // way.  This methods assumes the file has already been closed.
 func (l *RotateFile) openNew() error {
@@ -253,13 +273,14 @@ func (l *RotateFile) openNew() error {
 	}
 	l.file = f
 	l.size = 0
+	l.modTime = currentTime()
 	return nil
 }
 
 // openExistingOrNew opens the logfile if it exists and if the current write
 // would not put it over MaxSize.  If there is no such file or the write would
 // put it over the MaxSize, a new file is created.
-func (l *RotateFile) openExistingOrNew(writeLen int) error {
+func (l *RotateFile) openExistingOrNew(writeLen, maxSize int64) error {
 	l.mill()
 
 	filename := l.filename()
@@ -271,22 +292,6 @@ func (l *RotateFile) openExistingOrNew(writeLen int) error {
 		return fmt.Errorf("error getting log file info: %s", err)
 	}
 
-	if maxSize := l.max(); maxSize > 0 {
-		if info.Size()+int64(writeLen) >= maxSize {
-			return l.rotate()
-		}
-	}
-	modTime, nowTime := info.ModTime(), currentTime()
-	if l.Cycle != "" && isDiffDate(l.Cycle, modTime, nowTime) {
-		return l.rotate()
-	}
-	if l.Cycle == "" && l.Minutely > 0 {
-		secs := int64(l.Minutely) * 60
-		if isDiffTime(secs, modTime, nowTime) {
-			return l.rotate()
-		}
-	}
-
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		// if we fail to open the old log file for some reason, just ignore
@@ -295,6 +300,7 @@ func (l *RotateFile) openExistingOrNew(writeLen int) error {
 	}
 	l.file = file
 	l.size = info.Size()
+	l.modTime = info.ModTime()
 	return nil
 }
 
@@ -438,7 +444,7 @@ func (l *RotateFile) oldLogFiles() ([]logInfo, error) {
 
 // getTimeFormat use shortTimeFormat when cycle only
 func (l *RotateFile) getTimeFormat() string {
-	if l.Cycle != "" && l.max() <= 0 {
+	if l.max() == 0 && isCycle(l.Cycle) && l.Cycle != "hourly" {
 		return shortTimeFormat
 	}
 	return backupTimeFormat
@@ -495,13 +501,21 @@ func FormatWeek(t time.Time) string {
 	return fmt.Sprintf("%04d%03d", year, week)
 }
 
+// isCycle is one of the cycle
+func isCycle(cycle string) bool {
+	return cycle == "monthly" || cycle == "weekly" ||
+		cycle == "daily" || cycle == "hourly"
+}
+
 // isDiffDate the time.Time is not in the same cycle
 func isDiffDate(cycle string, modTime, nowTime time.Time) bool {
 	if cycle == "weekly" {
 		return FormatWeek(modTime) != FormatWeek(nowTime)
 	}
-	layout := "20060102"
-	if cycle == "monthly" {
+	layout := "2006010215"
+	if cycle == "daily" {
+		layout = "20060102"
+	} else if cycle == "monthly" {
 		layout = "200601"
 	}
 	return modTime.Format(layout) != nowTime.Format(layout)
