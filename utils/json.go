@@ -7,9 +7,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-var (
-	json = jsoniter.ConfigCompatibleWithStandardLibrary
-)
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // DeepCopy 深度复制对象
 func DeepCopy(dest, src any) (err error) {

@@ -10,9 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	cfg = dialect.ConnConfig{Type: "redis", Key: "test"}
-)
+var cfg = dialect.ConnConfig{Type: "redis", Key: "test"}
 
 func GetRedis() *redisw.RedisWrapper {
 	return redisw.NewRedisPool(cfg, 0)
@@ -106,7 +104,7 @@ func TestJson(t *testing.T) {
 	ok, err := r.SaveJson(key, ryan.RealName, 60)
 	assert.True(t, ok)
 	assert.NoError(t, err)
-	var name = new(RealName)
+	name := new(RealName)
 	t.Logf("before: %#v\n", name)
 	err = r.LoadJson(key, name)
 	t.Logf("after: %#v\n", name)

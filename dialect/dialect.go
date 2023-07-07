@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/azhai/gozzo/logging/adapters/xormlog"
 	"github.com/azhai/xgen/utils"
-	"github.com/azhai/xgen/xquery"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"xorm.io/xorm"
@@ -151,11 +151,7 @@ func (c ConnConfig) QuickConnect(logsql, verbose bool) *xorm.Engine {
 		panic(err)
 	}
 	if logfile := c.LogFile; logfile != "" && logsql {
-		if strings.Contains(logfile, "") {
-			logfile = strings.Replace(logfile, "$KEY", c.Key, 1)
-		}
-		logger := xquery.NewXormLogger(logfile)
-		engine.SetLogger(logger)
+		engine.SetLogger(xormlog.NewLogger(logfile))
 	}
 	return engine
 }

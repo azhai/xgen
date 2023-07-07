@@ -54,10 +54,14 @@ func ApplyOptions(qr *xorm.Session, opts []QueryOption) *xorm.Session {
 	return qr
 }
 
-// WithTable 限定数据表
-func WithTable(tableOrBean any) QueryOption {
+// WithTable 限定数据表和字段
+func WithTable(tableOrBean any, cols ...string) QueryOption {
 	return func(qr *xorm.Session) *xorm.Session {
-		return qr.Table(tableOrBean)
+		qr = qr.Table(tableOrBean)
+		if len(cols) > 0 {
+			qr = qr.Cols(cols...)
+		}
+		return qr
 	}
 }
 
@@ -189,7 +193,8 @@ func (r *RowIterator) prepare(eng *xorm.Engine, opts []QueryOption) []QueryOptio
 
 // IterBean 迭代查询对象
 func (r RowIterator) IterBean(qr *xorm.Session, proc BeanFunc,
-	opts []QueryOption) (count int64, err error) {
+	opts []QueryOption,
+) (count int64, err error) {
 	rows := new(xorm.Rows)
 	id, n := int64(0), 0
 	for err == nil {
@@ -228,7 +233,8 @@ func (r RowIterator) IterBean(qr *xorm.Session, proc BeanFunc,
 
 // IterCol 迭代查询主键
 func (r RowIterator) IterCol(qr *xorm.Session, proc BeanFunc,
-	col string, opts []QueryOption) (count int64, err error) {
+	col string, opts []QueryOption,
+) (count int64, err error) {
 	if col == "" {
 		col = r.orderCol
 	}
@@ -260,7 +266,8 @@ func (r RowIterator) IterCol(qr *xorm.Session, proc BeanFunc,
 
 // FindIndex 迭代查询主键列表，后累计总行数
 func (r *RowIterator) FindIndex(eng *xorm.Engine, proc BeanFunc,
-	col string, opts ...QueryOption) (count int64, err error) {
+	col string, opts ...QueryOption,
+) (count int64, err error) {
 	opts = r.prepare(eng, opts)
 	qr := eng.NewSession()
 	count, err = r.IterCol(qr, proc, col, opts)
@@ -269,7 +276,8 @@ func (r *RowIterator) FindIndex(eng *xorm.Engine, proc BeanFunc,
 
 // FindAll 迭代查询每行，后累计总行数
 func (r *RowIterator) FindAll(eng *xorm.Engine, proc BeanFunc,
-	opts ...QueryOption) (count int64, err error) {
+	opts ...QueryOption,
+) (count int64, err error) {
 	opts = r.prepare(eng, opts)
 	qr := eng.NewSession()
 	count, err = r.IterBean(qr, proc, opts)
@@ -278,7 +286,8 @@ func (r *RowIterator) FindAll(eng *xorm.Engine, proc BeanFunc,
 
 // FindCount 迭代查询，先查询总行数
 func (r *RowIterator) FindCount(eng *xorm.Engine, proc BeanFunc,
-	opts ...QueryOption) (count int64, err error) {
+	opts ...QueryOption,
+) (count int64, err error) {
 	opts = r.prepare(eng, opts)
 	qr := eng.NewSession()
 	count, err = ApplyOptions(qr, opts).Count()
@@ -302,7 +311,8 @@ func NewRowChannel(iter *RowIterator) *RowChannel {
 
 // Update 通用队列生产和消费
 func (r *RowChannel) Update(eng *xorm.Engine, proc BeanFunc,
-	consume func(val any), col string, opts []QueryOption) error {
+	consume func(val any), col string, opts []QueryOption,
+) error {
 	r.dataCh = make(chan any)
 	errCh := make(chan error, 1)  // 遇到一个错误就返回
 	go func(errCh chan<- error) { // 生产者放入协程，消费者才不会漏掉最后一个元素
@@ -323,7 +333,8 @@ func (r *RowChannel) Update(eng *xorm.Engine, proc BeanFunc,
 
 // UpdateIndex 消费主键列表
 func (r *RowChannel) UpdateIndex(eng *xorm.Engine, consume func(val any),
-	col string, opts ...QueryOption) error {
+	col string, opts ...QueryOption,
+) error {
 	if col == "" {
 		col = r.RowIterator.orderCol
 	}
@@ -336,7 +347,8 @@ func (r *RowChannel) UpdateIndex(eng *xorm.Engine, consume func(val any),
 
 // UpdateAll 消费每行字典
 func (r *RowChannel) UpdateAll(eng *xorm.Engine, consume func(val any),
-	opts ...QueryOption) error {
+	opts ...QueryOption,
+) error {
 	proc := func(bean any, col string) (int64, error) {
 		row, err := xutils.Obj2Dict(bean)
 		if err != nil {
