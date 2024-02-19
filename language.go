@@ -140,13 +140,15 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 	case schemas.TinyBlob, schemas.Blob, schemas.MediumBlob, schemas.LongBlob,
 		schemas.Bytea, schemas.Binary, schemas.VarBinary, schemas.UniqueIdentifier:
 		rtype, rtstr = TypeOfBytes, "[]byte"
-	case schemas.Varchar, schemas.NVarchar, schemas.TinyText, schemas.Text,
-		schemas.NText, schemas.MediumText, schemas.LongText:
-		if st.DefaultLength == 0 || st.DefaultLength > FixedStrMaxSize {
+	case schemas.Varchar, schemas.NVarchar:
+		if st.DefaultLength > FixedStrMaxSize {
 			rtstr = "xutils.NullString"
 		}
+	case schemas.TinyText, schemas.Text,
+		schemas.NText, schemas.MediumText, schemas.LongText:
+		rtstr = "xutils.NullString"
 		// case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
-		//	rtstr = rtype.String()
+		//	rtstr = rtype.String()2
 		// case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
 		//	rtstr = rtype.String()
 	}
@@ -255,6 +257,9 @@ func genGoImports(tables map[string]*schemas.Table) map[string]string {
 
 func type2string(col *schemas.Column) string {
 	t, s := sqlType2Type(col.SQLType)
+	if s == "string" && col.Nullable {
+		s = "xutils.NullString"
+	}
 	if t != TypeOfBool {
 		return s
 	}

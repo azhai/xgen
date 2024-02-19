@@ -260,7 +260,8 @@ func (q *ClusterQuery) ClusterCount(bean ...any) (int64, error) {
 
 // FindPage 分布式计数和翻页，查询全部表，但只获取部分结果集
 func (q *ClusterQuery) FindPage(pageno, pagesize int,
-	rowsSlicePtr any, condiBean ...any) (int64, error) {
+	rowsSlicePtr any, condiBean ...any,
+) (int64, error) {
 	if q.Suffixes.Len() == 0 {
 		return 0, nil
 	}

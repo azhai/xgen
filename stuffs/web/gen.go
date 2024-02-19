@@ -8,9 +8,7 @@ import (
 	"github.com/azhai/xgen/templater"
 )
 
-var (
-	tmpls = templater.NewFactory("./stuffs/web/")
-)
+var tmpls = templater.NewFactory("./stuffs/web/")
 
 func GenFile(data map[string]any, dest string, names ...string) (err error) {
 	var content []byte

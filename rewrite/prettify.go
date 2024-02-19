@@ -50,7 +50,8 @@ func RewriteGolangFile(filename string, cleanImports bool) (changed bool, err er
 
 // writeGolangFile 将代码整理后写入文件
 func writeGolangFile(filename string, codeText []byte,
-	cleanImports bool) (srcCode []byte, err error) {
+	cleanImports bool,
+) (srcCode []byte, err error) {
 	// Formart/Prettify the code 格式化代码
 	if srcCode, err = FormatGolangCode(codeText); err != nil {
 		srcCode = codeText
@@ -90,7 +91,7 @@ func WriteGolangFilePrettify(filename string, codeText []byte) ([]byte, error) {
 	return splitImports(filename, srcCode, err)
 }
 
-// WriteGolangFilePrettify 美化和整理导入，并输出go代码到文件
+// WriteGolangFileCleanImports 美化和整理导入，并输出go代码到文件
 func WriteGolangFileCleanImports(filename string, codeText []byte) ([]byte, error) {
 	srcCode, err := writeGolangFile(filename, codeText, true)
 	return splitImports(filename, srcCode, err)
@@ -121,7 +122,8 @@ func RewritePackage(pkgpath, pkgname string) error {
 
 // RewriteWithImports 注入导入声明
 func RewriteWithImports(pkg string, source []byte,
-	imports map[string]string) (*CodeSource, error) {
+	imports map[string]string,
+) (*CodeSource, error) {
 	cs := NewCodeSource()
 	if err := cs.SetPackage(pkg); err != nil {
 		return cs, err

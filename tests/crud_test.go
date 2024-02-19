@@ -34,7 +34,7 @@ func (MenuForTest) TableName() string {
 // ------------------------------------------------------------
 
 func (m *MenuForTest) Load(where any, args ...any) (bool, error) {
-	return db.Table(m).Where(where, args...).Get(m)
+	return db.Engine().Table(m).Where(where, args...).Get(m)
 }
 
 func (m *MenuForTest) Save(changes map[string]any) error {

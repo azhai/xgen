@@ -11,7 +11,8 @@ import (
 
 // JoinQuery 联表查询
 func JoinQuery(engine *xorm.Engine, query *xorm.Session,
-	table, fkey string, foreign ForeignTable) (*xorm.Session, []string) {
+	table, fkey string, foreign ForeignTable,
+) (*xorm.Session, []string) {
 	frgTable, frgAlias := foreign.TableName(), foreign.AliasName()
 	cond := Qprintf(engine, "%s.%s = %s.%s", table, fkey, frgAlias, foreign.Index)
 	if query == nil {
@@ -135,7 +136,8 @@ func (q *LeftJoinQuery) Count(bean ...any) (int64, error) {
 
 // FindAndCount 计数和获取结果集
 func (q *LeftJoinQuery) FindAndCount(
-	rowsSlicePtr any, condiBean ...any) (int64, error) {
+	rowsSlicePtr any, condiBean ...any,
+) (int64, error) {
 	total, err := q.Count()
 	if err != nil || total == 0 {
 		return total, err
@@ -146,7 +148,8 @@ func (q *LeftJoinQuery) FindAndCount(
 
 // FindPage 计数和翻页，只获取部分结果集
 func (q *LeftJoinQuery) FindPage(pageno, pagesize int,
-	rowsSlicePtr any, condiBean ...any) (int64, error) {
+	rowsSlicePtr any, condiBean ...any,
+) (int64, error) {
 	total, err := q.Count()
 	limit, offset := CalcPage(pageno, pagesize, int(total))
 	query := q.GetQuery()

@@ -74,8 +74,10 @@ func (c *Composer) RegisterGlobalSubstitute(sub *ModelSummary) {
 // RegisterSubstitute 注册可替换Model
 func (c *Composer) RegisterSubstitute(sub *ModelSummary) {
 	if sub != nil && !sub.IsExists {
+		if _, ok := c.subModels[sub.Name]; !ok {
+			c.subNames = append(c.subNames, sub.Name)
+		}
 		c.subModels[sub.Name] = sub
-		c.subNames = append(c.subNames, sub.Name)
 	}
 }
 
@@ -92,12 +94,24 @@ func (c *Composer) SubstituteSummary(summary *ModelSummary, verbose bool) []*Mod
 	if c.Global != nil && len(c.Global.subNames) > 0 {
 		subs = c.Global.SubstituteSummary(summary, verbose)
 	}
-	for _, subName := range c.subNames {
+	size, checks := len(c.subNames), make(map[string]string)
+	for i := size - 1; i >= 0; i-- { // 倒序，优先使用更大的subModel
+		subName := c.subNames[i]
 		if subName == summary.Name {
 			continue // 不要替换自己
 		}
+		if _, ok := checks[subName]; ok {
+			continue // 不要替换子集的子集
+		}
 		if sub, ok := c.subModels[subName]; ok {
-			if summary.ScanAndUseMixins(sub, verbose) {
+			match, needImport := summary.ScanAndUseMixins(sub, false, verbose)
+			if match {
+				summary.Children = append(summary.Children, subName)
+				for _, child := range sub.Children {
+					checks[child] = sub.Name
+				}
+			}
+			if needImport {
 				subs = append(subs, sub)
 			}
 		}
@@ -160,10 +174,10 @@ func GetLineFeature(code string) string {
 	if len(ps) == 1 {
 		return ps[0]
 	}
-	if strings.HasSuffix(ps[1], "json:\",inline\"") {
+	if strings.Contains(ps[1], "json:\",inline\"") {
 		return ps[0] + ":inline"
 	}
-	if strings.HasSuffix(ps[1], "xorm:\"extends\"") {
+	if strings.Contains(ps[1], "xorm:\"extends\"") {
 		return ps[0] + ":inline"
 	}
 	return ps[0] + ":" + ps[1]
@@ -177,6 +191,7 @@ type ModelSummary struct {
 	Features       []string
 	sortedFeatures []string
 	FieldLines     []string
+	Children       []string
 	IsChanged      bool
 	IsExists       bool // 同构Model已存在
 }
@@ -213,10 +228,10 @@ func (s *ModelSummary) Isomorphic() bool {
 	return len(features) == 1 && strings.HasSuffix(features[0], ":inline")
 }
 
-// GetSubstitute 使用inline tag代替原来的那些字段
-func (s *ModelSummary) GetSubstitute() string {
+// GetSubstitute 使用inline tag代替原来的那些字段，prefix可以是*星号
+func (s *ModelSummary) GetSubstitute(prefix string) string {
 	if s.Substitute == "" {
-		s.Substitute = fmt.Sprintf("*%s %s", s.Name, ModelExtends)
+		s.Substitute = fmt.Sprintf("%s%s %s", prefix, s.Name, ModelExtends)
 	}
 	return s.Substitute
 }
@@ -240,7 +255,7 @@ func (s *ModelSummary) ParseFields(cp *CodeParser, node *DeclNode) int {
 	return size
 }
 
-// ReplaceSummary
+// ReplaceSummary 使用subModel重写当前Model
 func (s *ModelSummary) ReplaceSummary(sub *ModelSummary) bool {
 	var features, lines []string
 	find, sted := false, sub.GetSortedFeatures()
@@ -249,8 +264,8 @@ func (s *ModelSummary) ReplaceSummary(sub *ModelSummary) bool {
 			features = append(features, ft)
 			lines = append(lines, s.FieldLines[i])
 		} else if !find {
-			subst := sub.GetSubstitute()
-			features = append(features, subst)
+			subst := sub.GetSubstitute("")
+			features = append(features, GetLineFeature(subst))
 			lines = append(lines, subst)
 			find = true
 			s.IsChanged = true
@@ -260,13 +275,13 @@ func (s *ModelSummary) ReplaceSummary(sub *ModelSummary) bool {
 	return s.IsChanged
 }
 
-// ScanAndUseMixins
-func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, verbose bool) (needImport bool) {
+// ScanAndUseMixins 扫描和使用Mixin
+func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, deep, verbose bool) (match, needImport bool) {
 	sted := sub.GetSortedFeatures()
 	sorted := s.GetSortedFeatures()
 	// 函数 IsSubsetList(..., ..., true) 用于排除异名同构的Model
 	if enums.IsSubsetList(sted, sorted, false) { // 正向替换
-		s.ReplaceSummary(sub)
+		match = s.ReplaceSummary(sub)
 		if len(sorted) == len(sted) { // 完全相等
 			s.IsExists = true
 		}
@@ -276,8 +291,11 @@ func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, verbose bool) (needIm
 		if verbose {
 			fmt.Println("*", s.Name, " <- ", sub.Name)
 		}
-	} else if strings.HasPrefix(sub.Name, "xq.") ||
-		strings.HasPrefix(sub.Name, "xquery.") {
+	}
+	if deep == false {
+		return
+	}
+	if strings.HasPrefix(sub.Name, "xq.") || strings.HasPrefix(sub.Name, "xquery.") {
 		return // 早于反向替换，避免陷入死胡同
 	} else if enums.IsSubsetList(sorted, sted, true) { // 反向替换
 		sub.ReplaceSummary(s)
@@ -288,7 +306,7 @@ func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, verbose bool) (needIm
 	return
 }
 
-// ReplaceModelFields
+// ReplaceModelFields 将Mixin写入到Model内，替代它的部分字段
 func ReplaceModelFields(cp *CodeParser, node *DeclNode, summary *ModelSummary) {
 	var last ast.Node
 	max := len(node.Fields) - 1
