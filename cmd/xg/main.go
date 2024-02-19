@@ -10,9 +10,9 @@ import (
 	"github.com/azhai/xgen/config"
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/rewrite"
-	"github.com/azhai/xgen/utils"
 
 	_ "github.com/arriqaaq/flashdb"
+	"github.com/azhai/gozzo/filesystem"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/k0kubun/pp"
 	_ "github.com/lib/pq"
@@ -83,7 +83,7 @@ func main() {
 
 // prettifyDir 美化目录下的go代码文件
 func prettifyDir(dir string) {
-	files, err := utils.FindFiles(dir, ".go", "vendor/", ".git/")
+	files, err := filesystem.FindFiles(dir, ".go", "vendor/", ".git/")
 	if err != nil {
 		panic(err)
 	}

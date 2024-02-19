@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/azhai/xgen/utils/logging"
+	"github.com/azhai/gozzo/logging"
 )
 
 var (

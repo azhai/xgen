@@ -23,8 +23,8 @@ var (
 func init() {
 	if config.IsRunTest() {
 		config.BackToDir(1) // 从tests退回根目录
-		Setup()
 	}
+	Setup()
 }
 
 func Setup() {

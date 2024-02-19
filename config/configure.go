@@ -3,9 +3,9 @@ package config
 import (
 	"fmt"
 
+	"github.com/azhai/gozzo/logging"
 	reverse "github.com/azhai/xgen"
 	"github.com/azhai/xgen/dialect"
-	"github.com/azhai/xgen/utils/logging"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclsimple"
@@ -69,7 +69,7 @@ func GetConfigLogger() (*zap.SugaredLogger, error) {
 		app := settings.App
 		level, dir = app.LogLevel, app.LogDir
 	}
-	cfg := logging.NewDefaultConfig()
+	cfg := logging.DefaultConfig()
 	cfg.MinLevel = level
-	return logging.NewLogger(cfg, dir), err
+	return logging.NewLoggerCustom(cfg, dir), err
 }

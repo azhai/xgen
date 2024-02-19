@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/azhai/xgen/utils/cache"
+	"github.com/azhai/gozzo/cache"
 	"github.com/muyo/sno"
 )
 
