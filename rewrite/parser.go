@@ -8,7 +8,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/azhai/xgen/utils"
+	"github.com/azhai/gozzo/match"
 	"github.com/pkg/errors"
 )
 
@@ -191,7 +191,7 @@ func (cp *CodeParser) AllDeclNode(kind string) []*DeclNode {
 // FindDeclNode 根据名称规则查找
 func (cp *CodeParser) FindDeclNode(kind string, wildcards ...string) []*DeclNode {
 	var nodes []*DeclNode
-	matchers := utils.NewGlobs(wildcards)
+	matchers := match.NewGlobs(wildcards)
 	for _, node := range cp.AllDeclNode(kind) {
 		if matchers.MatchAny(node.GetName(), true) {
 			nodes = append(nodes, node)

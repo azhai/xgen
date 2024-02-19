@@ -6,7 +6,6 @@ import (
 
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/utils"
-
 	"github.com/gomodule/redigo/redis"
 	"github.com/gomodule/redigo/redisx"
 )
@@ -23,7 +22,7 @@ var (
 	KeysEmptyError = fmt.Errorf("the param which named 'keys' must not empty !")
 )
 
-// redigo没有将应答中的OK转为bool值(2020-01-16)
+// ReplyBool redigo没有将应答中的OK转为bool值(2020-01-16)
 func ReplyBool(reply any, err error) (bool, error) {
 	if err != nil {
 		return false, err

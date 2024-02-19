@@ -11,11 +11,12 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/azhai/gozzo/filesystem"
+	"github.com/azhai/gozzo/match"
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/rewrite"
 	"github.com/azhai/xgen/templater"
 	"github.com/azhai/xgen/utils"
-
 	"xorm.io/xorm/schemas"
 )
 
@@ -256,7 +257,7 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 // FilterTables 按照ExcludeTables和IncludeTables配置过滤数据表
 func FilterTables(tables []*schemas.Table, includes, excludes []string, tailDigits int) []*schemas.Table {
 	res := make([]*schemas.Table, 0, len(tables))
-	inclMatchers, exclMatchers := utils.NewGlobs(includes), utils.NewGlobs(excludes)
+	inclMatchers, exclMatchers := match.NewGlobs(includes), match.NewGlobs(excludes)
 	digitsReg := regexp.MustCompile(fmt.Sprintf("_[0-9]{%d,}", tailDigits))
 	for _, tb := range tables {
 		// 排除4个数字以上结尾的分表
@@ -275,7 +276,7 @@ func FilterTables(tables []*schemas.Table, includes, excludes []string, tailDigi
 
 // ApplyDirMixins 将已知的Mixin嵌入到匹配的Model中
 func ApplyDirMixins(currDir string, verbose bool) (err error) {
-	files, _ := utils.FindFiles(currDir, ".go")
+	files, _ := filesystem.FindFiles(currDir, ".go")
 	if verbose && len(files) > 0 {
 		fmt.Println("")
 	}

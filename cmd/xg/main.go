@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"sync"
 
+	_ "github.com/arriqaaq/flashdb"
+	"github.com/azhai/gozzo/filesystem"
 	reverse "github.com/azhai/xgen"
 	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/config"
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/rewrite"
-
-	_ "github.com/arriqaaq/flashdb"
-	"github.com/azhai/gozzo/filesystem"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/k0kubun/pp"
 	_ "github.com/lib/pq"

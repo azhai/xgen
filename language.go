@@ -15,9 +15,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/azhai/gozzo/filesystem"
+	"github.com/azhai/gozzo/match"
 	"github.com/azhai/xgen/rewrite"
-	"github.com/azhai/xgen/utils"
-
 	"xorm.io/xorm/names"
 	"xorm.io/xorm/schemas"
 )
@@ -210,7 +210,7 @@ func convertMapper(mapname string) names.Mapper {
 
 func genNameSpace(targetDir string) string {
 	// 先重试提取已有代码文件（排除测试代码）的包名
-	files, err := utils.FindFiles(targetDir, ".go")
+	files, err := filesystem.FindFiles(targetDir, ".go")
 	if err == nil && len(files) > 0 {
 		for filename := range files {
 			if strings.HasSuffix(filename, "_test.go") {
@@ -323,7 +323,7 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		}
 	}
 
-	if comm := utils.TruncateText(col.Comment, 50); comm != "" {
+	if comm := match.TruncateText(col.Comment, 50); comm != "" {
 		comm = template.HTMLEscapeString(comm) // 备注脱敏
 		res = append(res, fmt.Sprintf("comment('%s')", comm))
 	}

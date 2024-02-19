@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"sort"
 	"strings"
 )
 
@@ -16,39 +15,6 @@ func GetIndirectType(v any) (rt reflect.Type) {
 	if rt.Kind() == reflect.Ptr {
 		rt = rt.Elem()
 	}
-	return
-}
-
-func GetFinalType(v any) (rt reflect.Type) {
-	rt = GetIndirectType(v)
-	for {
-		switch rt.Kind() {
-		default:
-			return rt
-		case reflect.Ptr, reflect.Chan:
-			rt = rt.Elem()
-		case reflect.Array, reflect.Slice:
-			rt = rt.Elem()
-		case reflect.Map:
-			kk := rt.Key().Kind()
-			if kk == reflect.String || kk <= reflect.Float64 {
-				rt = rt.Elem()
-			} else {
-				return rt
-			}
-		}
-	}
-}
-
-func SortedKeys(data any) (keys []string) {
-	rt := GetIndirectType(data)
-	if rt.Kind() != reflect.Map || rt.Key().Kind() != reflect.String {
-		return // data 必须是 map[string]xxxx 类型
-	}
-	for _, rv := range reflect.ValueOf(data).MapKeys() {
-		keys = append(keys, rv.String())
-	}
-	sort.Strings(keys)
 	return
 }
 
@@ -71,17 +37,6 @@ func GetColumns(v any, alias string, cols []string) []string {
 		}
 	}
 	return cols
-}
-
-func GetChangesFor(v any, changes map[string]any) map[string]any {
-	result := make(map[string]any)
-	cols := GetColumns(v, "", []string{})
-	for _, c := range cols {
-		if val, ok := changes[c]; ok {
-			result[c] = val
-		}
-	}
-	return result
 }
 
 // QuoteColumns 盲转义，认为字段名以小写字母开头

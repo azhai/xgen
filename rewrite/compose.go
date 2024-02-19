@@ -7,8 +7,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/azhai/gozzo/filesystem"
+	"github.com/azhai/gozzo/match"
 	"github.com/azhai/xgen/utils"
-	"github.com/azhai/xgen/utils/enums"
 	"github.com/pkg/errors"
 )
 
@@ -248,7 +249,7 @@ func (s *ModelSummary) ParseFields(cp *CodeParser, node *DeclNode) int {
 		}
 		comm := cp.GetComment(f.Comment, true)
 		if len(comm) > 0 {
-			code += " //" + utils.TruncateText(comm, 50)
+			code += " //" + match.TruncateText(comm, 50)
 		}
 		s.FieldLines[i] = code
 	}
@@ -260,7 +261,7 @@ func (s *ModelSummary) ReplaceSummary(sub *ModelSummary) bool {
 	var features, lines []string
 	find, sted := false, sub.GetSortedFeatures()
 	for i, ft := range s.Features {
-		if !enums.InStringList(ft, sted) {
+		if !match.InStringList(ft, sted) {
 			features = append(features, ft)
 			lines = append(lines, s.FieldLines[i])
 		} else if !find {
@@ -276,12 +277,12 @@ func (s *ModelSummary) ReplaceSummary(sub *ModelSummary) bool {
 }
 
 // ScanAndUseMixins 扫描和使用Mixin
-func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, deep, verbose bool) (match, needImport bool) {
+func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, deep, verbose bool) (matched, needImport bool) {
 	sted := sub.GetSortedFeatures()
 	sorted := s.GetSortedFeatures()
 	// 函数 IsSubsetList(..., ..., true) 用于排除异名同构的Model
-	if enums.IsSubsetList(sted, sorted, false) { // 正向替换
-		match = s.ReplaceSummary(sub)
+	if match.IsSubsetList(sted, sorted, false) { // 正向替换
+		matched = s.ReplaceSummary(sub)
 		if len(sorted) == len(sted) { // 完全相等
 			s.IsExists = true
 		}
@@ -297,7 +298,7 @@ func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, deep, verbose bool) (
 	}
 	if strings.HasPrefix(sub.Name, "xq.") || strings.HasPrefix(sub.Name, "xquery.") {
 		return // 早于反向替换，避免陷入死胡同
-	} else if enums.IsSubsetList(sorted, sted, true) { // 反向替换
+	} else if match.IsSubsetList(sorted, sted, true) { // 反向替换
 		sub.ReplaceSummary(s)
 		if verbose {
 			fmt.Println("*", s.Name, " -> ", sub.Name)
@@ -353,7 +354,7 @@ func PrepareMixins(mixinDir, mixinNS string) (mixinNames []string) {
 	if _, isExists := utils.FileSize(mixinDir); !isExists {
 		return
 	}
-	files, _ := utils.FindFiles(mixinDir, ".go")
+	files, _ := filesystem.FindFiles(mixinDir, ".go")
 	for filename := range files {
 		if strings.HasSuffix(filename, "_test.go") {
 			continue

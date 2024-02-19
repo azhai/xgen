@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/azhai/xgen/utils/enums"
-
 	"xorm.io/xorm"
 )
 
@@ -26,7 +24,7 @@ func JoinQuery(engine *xorm.Engine, query *xorm.Session,
 
 // ForeignTable 关联表
 type ForeignTable struct {
-	Join  enums.SqlJoin
+	Join  SqlJoin
 	Table ITableName
 	Alias string
 	Index string
@@ -105,7 +103,7 @@ func (q *LeftJoinQuery) AddLeftJoin(foreign ITableName, pkey, fkey, alias string
 		q.ForeignKeys = append(q.ForeignKeys, fkey)
 	}
 	q.Foreigns[fkey] = ForeignTable{
-		Join:  enums.LeftJoin,
+		Join:  LeftJoin,
 		Table: foreign,
 		Alias: alias,
 		Index: pkey,
