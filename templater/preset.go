@@ -76,7 +76,7 @@ import ({{- range $imp, $al := .Imports}}
 
 // {{$class}} {{$table.Comment}}
 type {{$class}} struct { {{- range $table.ColumnsSeq}}{{$col := $table.GetColumn .}}
-	{{ColumnMapper $col.Name}} {{Type $col}} %s{{Tag $table $col true}}%s{{end}}
+	{{ColumnMapper $col.Name}} {{Type $col}} %s{{Tag $table $col "json" "form"}}%s{{end}}
 }
 
 func (*{{$class}}) TableName() string {

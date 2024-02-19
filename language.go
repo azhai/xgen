@@ -265,28 +265,26 @@ func type2string(col *schemas.Column) string {
 	return TypeOfInt.String()
 }
 
-func tag2string(table *schemas.Table, col *schemas.Column, genJson bool) string {
-	tj, tx := "", tagXorm(table, col)
-	if genJson {
-		tj = tagJson(col)
-	} else {
+func tag2string(table *schemas.Table, col *schemas.Column, names ...string) string {
+	tx := tagXorm(table, col)
+	if len(names) == 0 {
 		return tx
 	}
-	if tx == "" {
-		if tj == "" {
-			return ""
-		} else {
-			return tj
-		}
+	var ts []string
+	for _, name := range names {
+		ts = append(ts, tagCustom(col, name))
 	}
-	return tj + " " + tx
+	if tx != "" {
+		ts = append(ts, tx)
+	}
+	return strings.Join(ts, " ")
 }
 
-func tagJson(col *schemas.Column) string {
+func tagCustom(col *schemas.Column, name string) string {
 	if col.Name == "" {
 		return ""
 	}
-	return fmt.Sprintf(`json:"%s"`, col.Name)
+	return fmt.Sprintf(`%s:"%s"`, name, col.Name)
 }
 
 func tagXorm(table *schemas.Table, col *schemas.Column) string {
