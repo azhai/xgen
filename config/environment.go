@@ -18,7 +18,7 @@ func init() {
 	flag.IntVar(&backDirs, "b", 0, "回退目录层级") // 默认在bin目录下
 	flag.StringVar(&cfgFile, "c", "settings.hcl", "配置文件位置")
 	// 和urfave/cli的version参数冲突，需要在App中设置HideVersion
-	flag.BoolVar(&verbose, "v", false, "详细输出")
+	flag.BoolVar(&verbose, "vv", false, "详细输出")
 }
 
 // Setup 根据不同场景初始化

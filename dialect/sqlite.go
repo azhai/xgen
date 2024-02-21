@@ -37,9 +37,9 @@ func (Sqlite) ChangeDb(database string) (bool, error) {
 // BuildDSN 生成DSN连接串
 func (d Sqlite) BuildDSN() string {
 	if d.IsMemory() {
-		return "file::memory:?xm=shared&"
+		d.Path = ":memory:"
 	}
-	return "file:" + d.Path + "?xm=shared&mode=rwc&"
+	return "file:" + d.Path + "?cache=shared&"
 }
 
 // BuildFullDSN 生成带账号的完整DSN
