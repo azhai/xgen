@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/azhai/xgen/stuffs"
+	fs "github.com/azhai/gozzo/filesystem"
 	"github.com/azhai/xgen/stuffs/web"
 	"github.com/azhai/xgen/utils"
 )
@@ -31,7 +31,7 @@ func CheckProject(outputDir, nameSpace, binName string) (err error) {
 // SkelProject 生成一个项目的骨架
 func SkelProject(outputDir, nameSpace, binName string, force bool) (err error) {
 	files := map[string]string{"settings.hcl.example": "settings.hcl", ".gitignore": "", "Makefile": ""}
-	if err = stuffs.CopyFiles(outputDir, "./", files, force); err != nil {
+	if err = fs.CopyFiles(outputDir, "./", files, force); err != nil {
 		return
 	}
 	filename := filepath.Join(outputDir, "Makefile")

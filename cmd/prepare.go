@@ -1,92 +1,49 @@
 package cmd
 
 import (
-	"flag"
-	"fmt"
-	"os"
-	"path/filepath"
-	"runtime"
-
-	"github.com/azhai/xgen/config"
-	"github.com/k0kubun/pp"
-	"github.com/klauspost/cpuid/v2"
+	"github.com/azhai/gozzo/config"
+	reverse "github.com/azhai/xgen"
+	"github.com/azhai/xgen/dialect"
 )
 
-const (
-	VERSION  = "1.7.0"
-	MegaByte = 1024 * 1024
-)
+var dbSettings = new(DbSettings)
 
-var (
-	interActive      bool   // 交互模式
-	onlyApplyMixins  bool   // 仅嵌入Mixins
-	onlyPrettifyCode bool   // 仅美化代码
-	onlyRunDemo      bool   // 运行样例代码
-	onlyRunSkel      bool   // 生成新项目
-	isForce          bool   // 覆盖文件
-	skelOutDir       string // 新项目文件夹
-)
-
-// OptionConfig 自定义选项，一部分是命令行输入，一部分是配置文件解析
-type OptionConfig struct {
-	ExecAction  string
-	InterActive bool
-	NameSpace   string
-	OutputDir   string
-	IsForce     bool
-	Verbose     bool
-	Version     string `hcl:"version,optional" json:"version,omitempty"`
+// DbSettings 数据库、缓存相关配置
+type DbSettings struct {
+	Reverse *reverse.ReverseConfig `hcl:"reverse,block" json:"reverse,omitempty"`
+	Repeats []dialect.RepeatConfig `hcl:"repeat,block" json:"repeat"`
+	Conns   []dialect.ConnConfig   `hcl:"conn,block" json:"conn"`
 }
 
-func init() {
-	// 压舱石，阻止频繁GC
-	ballast := make([]byte, 256*MegaByte)
-	runtime.KeepAlive(ballast)
-
-	if level := os.Getenv("GOAMD64"); level == "" {
-		level = fmt.Sprintf("v%d", cpuid.CPU.X64Level())
-		fmt.Printf("请设置环境变量 export GOAMD64=%s\n\n", level)
+// LoadConfigFile 读取默认配置文件
+func LoadConfigFile(reload bool) (*config.RootConfig, error) {
+	if reload == false { //  不重复解析配置文件
+		theSettings := config.GetTheSettings()
+		if theSettings != nil {
+			return theSettings, nil
+		}
 	}
-
-	flag.BoolVar(&interActive, "i", false, "使用交互模式")
-	flag.BoolVar(&onlyApplyMixins, "m", false, "仅嵌入Mixins")
-	flag.StringVar(&skelOutDir, "o", "../example", "新项目文件夹")
-	flag.BoolVar(&onlyPrettifyCode, "p", false, "仅美化代码")
-	flag.BoolVar(&onlyRunDemo, "r", false, "运行样例代码")
-	flag.BoolVar(&onlyRunSkel, "s", false, "生成新项目")
-	flag.BoolVar(&isForce, "f", false, "覆盖文件")
-	config.Setup()
+	theSettings, err := config.ParseConfigFile(dbSettings)
+	// 复制连接配置，用于同一个实例的不同数据库
+	if len(dbSettings.Repeats) > 0 {
+		adds := dialect.RepeatConns(dbSettings.Repeats, dbSettings.Conns)
+		if len(adds) > 0 {
+			dbSettings.Conns = append(dbSettings.Conns, adds...)
+		}
+		dbSettings.Repeats = []dialect.RepeatConfig{} // 避免重复生成
+	}
+	return theSettings, err
 }
 
-// GetOptions 解析配置文件和命令行命名参数
-func GetOptions() (*OptionConfig, *config.RootConfig) {
-	options := new(OptionConfig)
-	settings, err := config.ReadConfigFile(options)
-	if err != nil {
-		panic(err)
-	}
-	if options.Version == "" {
-		options.Version = VERSION
-	}
+// GetDbSettings 返回数据库配置单例
+func GetDbSettings() *DbSettings {
+	return dbSettings
+}
 
-	options.InterActive = interActive
-	options.IsForce = isForce
-	if onlyRunDemo {
-		options.ExecAction = "demo"
-	} else if onlyApplyMixins {
-		options.ExecAction = "mixin"
-	} else if onlyPrettifyCode {
-		options.ExecAction = "pretty"
-	} else if onlyRunSkel {
-		options.ExecAction = "skel"
-		options.NameSpace = filepath.Base(skelOutDir)
-		options.OutputDir, _ = filepath.Abs(skelOutDir)
-		settings.Reverse.OutputDir = filepath.Join(skelOutDir, "models")
-		settings.Reverse.NameSpace = fmt.Sprintf("%s/models", options.NameSpace)
+// GetConnConfigs 返回数据库连接
+func GetConnConfigs() (conns []dialect.ConnConfig) {
+	if dbSettings != nil {
+		conns = dbSettings.Conns
 	}
-	if options.Verbose = config.Verbose(); options.Verbose {
-		fmt.Print("Options = ")
-		pp.Println(options)
-	}
-	return options, settings
+	return
 }

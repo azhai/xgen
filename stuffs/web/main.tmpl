@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"runtime"
 
-	"{{.NameSpace}}/cmd"
-	"{{.NameSpace}}/handlers"
-	"{{.NameSpace}}/models"
-
 	"gitee.com/azhai/fiber-u8l/v2"
 	"gitee.com/azhai/fiber-u8l/v2/middleware/compress"
+	"github.com/azhai/gozzo/config"
+	"{{.NameSpace}}/handlers"
+	"{{.NameSpace}}/models"
 )
 
 func main() {
 	runtime.GOMAXPROCS(1)
-	options, _ := cmd.GetOptions()
-	models.Setup()
+	config.SetupLog()
+	models.SetupConns()
 	go handlers.SaveMsgData(options.MaxWriteSize)
 
 	addr := fmt.Sprintf("%s:%d", options.Host, options.Port)

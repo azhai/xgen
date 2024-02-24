@@ -1,9 +1,13 @@
 debug = true
 
-app "xgen" {
+app {
+    name = "xgen"
+    version = "3.1.4"
+}
+
+log {
     log_level = "debug"
     log_dir = "./logs"
-    version = "3.1.4"
 }
 
 reverse "golang" {

@@ -45,7 +45,7 @@ type ReverseConfig struct {
 }
 
 // GetTablePrefixes 获取可用表名前缀
-func (c ReverseConfig) GetTablePrefixes() []string {
+func (c *ReverseConfig) GetTablePrefixes() []string {
 	var prefixes []string     // 不使用表名前缀
 	if c.TablePrefix == "*" { // 使用所有的包含列标前缀
 		for _, pre := range c.IncludeTables {
@@ -61,7 +61,7 @@ func (c ReverseConfig) GetTablePrefixes() []string {
 }
 
 // GetTemplateName 获取模板名称，优先使用配置，然后是预设模板
-func (c ReverseConfig) GetTemplateName(name string) string {
+func (c *ReverseConfig) GetTemplateName(name string) string {
 	switch strings.ToLower(name) {
 	default:
 		return ""
@@ -82,11 +82,11 @@ func (c ReverseConfig) GetTemplateName(name string) string {
 type Reverser struct {
 	currOutDir string
 	lang       *Language
-	target     ReverseConfig
+	target     *ReverseConfig
 }
 
 // NewGoReverser 创建Golang反转器
-func NewGoReverser(target ReverseConfig) *Reverser {
+func NewGoReverser(target *ReverseConfig) *Reverser {
 	rewrite.PrepareMixins(target.MixinDir, target.MixinNS)
 	return &Reverser{lang: golang, target: target}
 }

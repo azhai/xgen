@@ -6,10 +6,10 @@ import (
 	"sync"
 
 	_ "github.com/arriqaaq/flashdb"
+	"github.com/azhai/gozzo/config"
 	"github.com/azhai/gozzo/filesystem"
 	reverse "github.com/azhai/xgen"
 	"github.com/azhai/xgen/cmd"
-	"github.com/azhai/xgen/config"
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/rewrite"
 	_ "github.com/go-sql-driver/mysql"
@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	opts, settings := cmd.GetOptions()
+	opts, settings := ParseOptions()
 	if opts.ExecAction != "" {
 		fmt.Println(opts.ExecAction, "...")
 	}
@@ -49,7 +49,7 @@ func main() {
 
 	skelBinName := "serv"
 	if opts.ExecAction == "skel" {
-		reverse.SkelProject(opts.OutputDir, opts.NameSpace, skelBinName, opts.IsForce)
+		_ = reverse.SkelProject(opts.OutputDir, opts.NameSpace, skelBinName, opts.IsForce)
 	}
 	rver := reverse.NewGoReverser(settings.Reverse)
 	// 生成顶部目录下init单个文件
@@ -58,14 +58,14 @@ func main() {
 	}
 	var wg sync.WaitGroup
 	dbArgs := config.ReadArgs(true, nil)
-	for _, cfg := range settings.Conns {
+	for _, cfg := range cmd.GetConnConfigs() {
 		if dbArgs.Size() > 0 && !dbArgs.Has(cfg.Key) {
 			continue
 		}
 		wg.Add(1)
 		go func(rver *reverse.Reverser, cfg dialect.ConnConfig) {
 			defer wg.Done()
-			err := reverseDb(rver, cfg, opts)
+			err = reverseDb(rver, cfg, opts)
 			if err != nil {
 				fmt.Println("xx", err)
 				panic(err)
@@ -76,7 +76,7 @@ func main() {
 
 	fmt.Println("执行完成。", opts.ExecAction)
 	if opts.ExecAction == "skel" {
-		reverse.CheckProject(opts.OutputDir, opts.NameSpace, skelBinName)
+		_ = reverse.CheckProject(opts.OutputDir, opts.NameSpace, skelBinName)
 	}
 }
 
@@ -88,28 +88,29 @@ func prettifyDir(dir string) {
 	}
 	for filename := range files {
 		fmt.Println("-", filename)
-		rewrite.RewriteGolangFile(filename, true)
+		_, _ = rewrite.RewriteGolangFile(filename, true)
 	}
 }
 
-func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig, opts *cmd.OptionConfig) (err error) {
+func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig, opts *CommandOptions) (err error) {
+	verbose := config.Verbose()
 	currDir, isXorm := rver.SetOutDir(cfg.Key), true
 	if opts.ExecAction == "mixin" { // 只进行Mixin嵌入
 		isXorm = cfg.LoadDialect().IsXormDriver()
 	} else { // 生成conn单个文件
-		isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, opts.Verbose)
+		isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, verbose)
 		if err != nil {
 			return
 		}
 	}
 	if isXorm { // 生成models和queries多个文件
-		err = reverse.ApplyDirMixins(currDir, opts.Verbose)
+		err = reverse.ApplyDirMixins(currDir, verbose)
 	}
 	return
 }
 
 // questions 交互式问题和接收回答
-func questions(settings *config.RootConfig) (err error) {
+func questions(settings *cmd.DbSettings) (err error) {
 	prompt := promptui.Prompt{
 		Label:     "使用交互模式生成多组Model文件，开始",
 		IsConfirm: true,
@@ -138,7 +139,7 @@ func questions(settings *config.RootConfig) (err error) {
 	}
 	settings.Reverse.NameSpace = val
 
-	pp.Println(settings.Reverse)
+	_, _ = pp.Println(settings.Reverse)
 	prompt = promptui.Prompt{
 		Label:     "使用以上配置，是否继续",
 		IsConfirm: true,

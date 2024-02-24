@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/azhai/xgen/models"
 	// db "github.com/azhai/xgen/models/default"
-
 	xq "github.com/azhai/xgen/xquery"
 	"xorm.io/xorm"
 )
@@ -27,8 +25,6 @@ func WithCdrPair(fromid, toid int) xq.QueryOption {
 }
 
 func runTheDemo() {
-	models.Setup()
-
 	demo1()
 
 	// var err error

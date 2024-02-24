@@ -2,35 +2,39 @@ package cmd
 
 import (
 	"flag"
-	"time"
 
-	"github.com/azhai/xgen/config"
-	xutils "github.com/azhai/xgen/utils"
+	"github.com/azhai/gozzo/config"
+	"github.com/azhai/xgen/cmd"
 	xq "github.com/azhai/xgen/xquery"
 	"github.com/k0kubun/pp"
 )
 
-var (
-	serverHost  string // 运行IP
-	serverPort  int    // 运行端口
-	logger      *xutils.Logger
-)
+var options = new(CommandOptions)
 
-type OptionConfig struct {
-	Host         string `hcl:"host,optional" json:"host,omitempty"`
-	Port         int    `hcl:"port" json:"port"`
+type ServerOptions struct {
+	Host         string `hcl:"host,optional" json:"host,omitempty"` // 运行IP
+	Port         int    `hcl:"port" json:"port"`                    // 运行端口
 	MaxWriteSize int
 }
 
 func init() {
-	flag.StringVar(&serverHost, "s", "", "运行IP")
-	flag.IntVar(&serverPort, "p", 9870, "运行端口")
-	config.Setup()
+	config.PrepareEnv(256)
+	flag.StringVar(&options.Host, "s", "", "运行IP")
+	flag.IntVar(&options.Port, "p", 9870, "运行端口")
+	flag.IntVar(&options.MaxWriteSize, "W", xq.MaxWriteSize, "批量写入最大行数")
+	config.PrepareFlags()
+
+	if _, err := cmd.LoadConfigFile(); err != nil {
+		panic(err)
+	}
+	if config.Verbose() {
+		pp.Println(options)
+	}
 }
 
-func GetOptions() (*OptionConfig, *config.RootConfig) {
-	options := new(OptionConfig)
-	settings, err := config.ReadConfigFile(options)
+func GetOptions() (*ServerOptions, *config.RootConfig) {
+	options := new(ServerOptions)
+	settings, err := config.LoadConfigFile(options)
 	if err != nil {
 		panic(err)
 	}

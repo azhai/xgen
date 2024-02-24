@@ -4,15 +4,14 @@ import (
 	"strings"
 	"time"
 
-	"{{.NameSpace}}/cmd"
-	db "{{.NameSpace}}/models/default"
-
 	"gitee.com/azhai/fiber-u8l/v2"
+	"github.com/azhai/gozzo/logging"
+	db "{{.NameSpace}}/models/default"
 )
 
 const (
-	HEAD_KEY_UA  = "UserAgent"
-	MSG_URL_PRE  = "/message/"
+	HeadKeyUA  = "UserAgent"
+	MsgUrlPre  = "/message/"
 )
 
 var (
@@ -27,7 +26,7 @@ func MyErrorHandler(ctx *fiber.Ctx) (err error) {
 // MyGetHandler GET请求
 func MyGetHandler(ctx *fiber.Ctx) (err error) {
 	url := ctx.OriginalURL()
-	ua, body := ctx.HeaderStr(HEAD_KEY_UA), ""
+	ua, body := ctx.HeaderStr(HeadKeyUA), ""
 	go logRequest("GET", url, ua, body)
 	err = ctx.Reply("success")
 	return err
@@ -36,7 +35,7 @@ func MyGetHandler(ctx *fiber.Ctx) (err error) {
 // MyPostHandler POST请求
 func MyPostHandler(ctx *fiber.Ctx) (err error) {
 	url := ctx.OriginalURL()
-	ua, body := ctx.HeaderStr(HEAD_KEY_UA), ""
+	ua, body := ctx.HeaderStr(HeadKeyUA), ""
 	ctype := ctx.ContentType().String()
 	if ctype == "application/x-www-form-urlencoded" || ctype == "application/json" {
 		body = string(ctx.Body())
@@ -45,7 +44,7 @@ func MyPostHandler(ctx *fiber.Ctx) (err error) {
 	}
 	go logRequest("POST", url, ua, body)
 
-	if strings.HasPrefix(url, MSG_URL_PRE) {
+	if strings.HasPrefix(url, MsgUrlPre) {
 		if data := parseMsgData(body); data != nil {
 			msgchan <- data
 		}
@@ -56,21 +55,17 @@ func MyPostHandler(ctx *fiber.Ctx) (err error) {
 
 // logRequest 记录请求到日志
 func logRequest(act, url, ua, body string) {
-	logger := cmd.GetDefaultLogger()
-	if logger != nil {
-		if body == "" {
-			logger.Info(act, "\t", url, "\t", ua)
-		} else {
-			logger.Info(act, "\t", url, "\t", ua, "\t", body)
-		}
+	if body == "" {
+		logging.Info(act, "\t", url, "\t", ua)
+	} else {
+		logging.Info(act, "\t", url, "\t", ua, "\t", body)
 	}
 }
 
 // logErrorIf 记录错误到日志
 func logErrorIf(err error) {
-	logger := cmd.GetDefaultLogger()
-	if logger != nil && err != nil {
-		logger.Error(err)
+	if err != nil {
+		logging.Error(err)
 	}
 }
 

@@ -1,51 +1,39 @@
 package models
 
 import (
-	"net/url"
-
-	"github.com/azhai/xgen/config"
+	"github.com/azhai/gozzo/config"
+	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/dialect"
 )
 
 var (
-	connCfgs = make(map[string]dialect.ConnConfig)
-	connKeys = url.Values{}
+	connLoaded = false
+	connCfgs   = make(map[string]dialect.ConnConfig)
 )
 
 func init() {
 	if config.IsRunTest() {
-		config.BackToDir(1) // 从tests退回根目录
+		_, _ = config.BackToDir(1) // 从tests退回根目录
+		SetupConns()
+	} else {
+		_ = config.BackToAppDir()
 	}
-	Setup()
 }
 
-func Setup() {
-	settings, err := config.ReadConfigFile(nil)
-	if err != nil {
+func SetupConns() {
+	if _, err := cmd.LoadConfigFile(false); err != nil {
 		panic(err)
 	}
-	for _, c := range settings.Conns {
+	for _, c := range cmd.GetConnConfigs() {
 		connCfgs[c.Key] = c
-		connKeys.Add(c.Type, c.Key)
 	}
-}
-
-func GetConnTypes() []string {
-	var result []string
-	for ct := range connKeys {
-		result = append(result, ct)
-	}
-	return result
-}
-
-func GetConnKeys(connType string) []string {
-	if keys, ok := connKeys[connType]; ok {
-		return keys
-	}
-	return nil
+	connLoaded = true
 }
 
 func GetConnConfig(key string) dialect.ConnConfig {
+	if connLoaded == false {
+		SetupConns()
+	}
 	if cfg, ok := connCfgs[key]; ok {
 		return cfg
 	}
