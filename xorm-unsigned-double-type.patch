@@ -1,0 +1,42 @@
+--- schemas/type.go	2024-06-27 08:58:47.000000000 +0800
++++ schemas/type.go.new	2024-06-27 09:14:34.000000000 +0800
+@@ -139,10 +139,11 @@ var (
+ 	Money      = "MONEY"
+ 	SmallMoney = "SMALLMONEY"
+ 
+-	Real          = "REAL"
+-	Float         = "FLOAT"
+-	UnsignedFloat = "UNSIGNED FLOAT"
+-	Double        = "DOUBLE"
++	Real           = "REAL"
++	Float          = "FLOAT"
++	UnsignedFloat  = "UNSIGNED FLOAT"
++	Double         = "DOUBLE"
++	UnsignedDouble = "UNSIGNED DOUBLE"
+ 
+ 	Binary     = "BINARY"
+ 	VarBinary  = "VARBINARY"
+@@ -209,14 +210,15 @@ var (
+ 		SmallDateTime: TIME_TYPE,
+ 		Year:          TIME_TYPE,
+ 
+-		Decimal:       NUMERIC_TYPE,
+-		Numeric:       NUMERIC_TYPE,
+-		Real:          NUMERIC_TYPE,
+-		Float:         NUMERIC_TYPE,
+-		UnsignedFloat: NUMERIC_TYPE,
+-		Double:        NUMERIC_TYPE,
+-		Money:         NUMERIC_TYPE,
+-		SmallMoney:    NUMERIC_TYPE,
++		Decimal:        NUMERIC_TYPE,
++		Numeric:        NUMERIC_TYPE,
++		Real:           NUMERIC_TYPE,
++		Float:          NUMERIC_TYPE,
++		UnsignedFloat:  NUMERIC_TYPE,
++		Double:         NUMERIC_TYPE,
++		UnsignedDouble: NUMERIC_TYPE,
++		Money:          NUMERIC_TYPE,
++		SmallMoney:     NUMERIC_TYPE,
+ 
+ 		Binary:    BLOB_TYPE,
+ 		VarBinary: BLOB_TYPE,

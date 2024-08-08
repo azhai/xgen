@@ -1,0 +1,24 @@
+--- dialects/mysql.go	2024-06-27 08:58:46.000000000 +0800
++++ dialects/mysql.go.new	2024-06-27 09:21:52.000000000 +0800
+@@ -322,6 +322,9 @@ func (db *mysql) SQLType(c *schemas.Colu
+ 	case schemas.UnsignedFloat:
+ 		res = schemas.Float
+ 		isUnsigned = true
++	case schemas.UnsignedDouble:
++		res = schemas.Double
++		isUnsigned = true
+ 	default:
+ 		res = t
+ 	}
+@@ -514,7 +517,10 @@ func (db *mysql) GetColumns(queryer core
+ 		col.Length = len1
+ 		col.Length2 = len2
+ 		if _, ok := schemas.SqlTypes[colType]; !ok {
+-			return nil, nil, fmt.Errorf("unknown colType %v", colType)
++		    if !strings.HasPrefix(colType, "UNSIGNED ") {
++		        return nil, nil, fmt.Errorf("unknown colType %v", colType)
++		    }
++		    colType = colType[len("UNSIGNED "):]
+ 		}
+ 		col.SQLType = schemas.SQLType{Name: colType, DefaultLength: len1, DefaultLength2: len2}
+ 

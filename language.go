@@ -132,7 +132,7 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 		rtype = TypeOfInt
 	case schemas.BigInt, schemas.BigSerial, schemas.UnsignedBigInt:
 		rtype = TypeOfInt64
-	case schemas.Float, schemas.Real, schemas.Double:
+	case schemas.Real, schemas.Float, schemas.UnsignedFloat, schemas.Double, schemas.UnsignedDouble:
 		rtype = TypeOfFloat64
 	case schemas.DateTime, schemas.Date, schemas.Time, schemas.TimeStamp,
 		schemas.TimeStampz, schemas.SmallDateTime, schemas.Year:

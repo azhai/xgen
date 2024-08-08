@@ -192,8 +192,9 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 
 	fmt.Println("")
 	for _, table := range tableSchemas {
-		fmt.Println(".", pkgName, table.Name)
 		tableName := table.Name
+		fmt.Println(".", pkgName, tableName)
+		table.Name = strings.ReplaceAll(table.Name, "-", "_")
 		if len(tablePrefixes) > 0 {
 			table.Name = trimAnyPrefix(table.Name, tablePrefixes)
 		}
