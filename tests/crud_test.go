@@ -25,7 +25,7 @@ type MenuForTest struct {
 	*xquery.TimeMixin   `json:",inline" xorm:"extends"`
 }
 
-func (MenuForTest) TableName() string {
+func (*MenuForTest) TableName() string {
 	return "x_menu_abcd"
 }
 
@@ -66,7 +66,7 @@ func Test05Delete(t *testing.T) {
 }
 
 func Test06Query(t *testing.T) {
-	table := (MenuForTest{}).TableName()
+	table := new(MenuForTest).TableName()
 	sql := fmt.Sprintf("DROP TABLE `%s`", table)
 	_, err := db.Engine().Query(sql)
 	assert.NoError(t, err)

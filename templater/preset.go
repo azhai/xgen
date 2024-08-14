@@ -30,7 +30,8 @@ func init() {
 }
 
 func SetupConns() {
-	if _, err := cmd.LoadConfigFile(false); err != nil {
+	// 需要重新解析，因为配置可能之前解析过，当时忽略了数据库部分
+	if _, err := cmd.LoadConfigFile(true); err != nil {
 		panic(err)
 	}
 	for _, c := range cmd.GetConnConfigs() {

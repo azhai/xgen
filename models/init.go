@@ -21,7 +21,7 @@ func init() {
 }
 
 func SetupConns() {
-	if _, err := cmd.LoadConfigFile(false); err != nil {
+	if _, err := cmd.LoadConfigFile(true); err != nil {
 		panic(err)
 	}
 	for _, c := range cmd.GetConnConfigs() {
