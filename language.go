@@ -48,6 +48,9 @@ const ( // 约定大于配置
 	XormTagPrimaryKey = "pk"
 	XormTagUnique     = "unique"
 	XormTagIndex      = "index"
+
+	UnsignedFloat  = "UNSIGNED FLOAT"
+	UnsignedDouble = "UNSIGNED DOUBLE"
 )
 
 var (
@@ -132,7 +135,7 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 		rtype = TypeOfInt
 	case schemas.BigInt, schemas.BigSerial, schemas.UnsignedBigInt:
 		rtype = TypeOfInt64
-	case schemas.Real, schemas.Float, schemas.UnsignedFloat, schemas.Double, schemas.UnsignedDouble:
+	case schemas.Real, schemas.Float, UnsignedFloat, schemas.Double, UnsignedDouble:
 		rtype = TypeOfFloat64
 	case schemas.DateTime, schemas.Date, schemas.Time, schemas.TimeStamp,
 		schemas.TimeStampz, schemas.SmallDateTime, schemas.Year:
