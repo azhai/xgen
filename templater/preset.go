@@ -145,6 +145,7 @@ func Engine() *xorm.Engine {
 	if engine == nil {
 		cfg := models.GetConnConfig("{{.ConnName}}")
 		engine = ConnectXorm(cfg)
+		// engine.Sync()
 	}
 	return engine
 }

@@ -1,71 +1,101 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"path/filepath"
 	"sync"
 
-	_ "github.com/arriqaaq/flashdb"
+	"github.com/alexflint/go-arg"
 	"github.com/azhai/gozzo/config"
 	"github.com/azhai/gozzo/filesystem"
 	reverse "github.com/azhai/xgen"
-	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/rewrite"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/k0kubun/pp"
-	_ "github.com/lib/pq"
 	"github.com/manifoldco/promptui"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func main() {
-	opts, settings := ParseOptions()
-	if opts.ExecAction != "" {
-		fmt.Println(opts.ExecAction, "...")
-	}
+var args struct {
+	Pretty   *prettyCmd   `arg:"subcommand:pretty" help:"美化代码"`
+	Mixin    *mixinCmd    `arg:"subcommand:mixin" help:"嵌入Mixins"`
+	Skeleton *skeletonCmd `arg:"subcommand:skeleton" help:"生成新项目"`
+	Config   string       `arg:"-c,--config" default:"settings.hcl" help:"配置文件路径"`
+	Verbose  bool         `arg:"-v,--verbose" help:"输出详细信息"`
+	reverseOpts
+}
 
-	if opts.ExecAction == "demo" {
-		runTheDemo()
-		return
-	} else if opts.ExecAction == "pretty" { // 仅美化目录下的代码
-		if flag.NArg() == 0 {
+type prettyCmd struct {
+	Dirs []string `arg:"positional"`
+}
+
+type mixinCmd struct {
+}
+
+type reverseOpts struct {
+	IsInteract bool   `arg:"-i,--interact" default:false help:"交互模式"`
+	OutputDir  string `arg:"-o,--out" default:"../example" help:"输出目录"`
+	NameSpace  string `arg:"-n,--ns" default:"" help:"命名空间"`
+}
+
+type skeletonCmd struct {
+	BinName string `arg:"-b,--bin" default:"serv" help:"二进制文件名"`
+	IsForce bool   `arg:"-f,--force" default:false help:"覆盖文件"`
+}
+
+func init() {
+	config.PrepareEnv(256)
+	arg.MustParse(&args)
+	config.ReadConfigFile(args.Config, args.Verbose, &args)
+	if _, err := LoadConfigFile(false); err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+	if args.Pretty != nil { // 仅美化目录下的代码
+		dirs := args.Pretty.Dirs
+		if len(dirs) == 0 {
 			prettifyDir(".")
 			return
 		}
-		for _, dir := range flag.Args() {
+		for _, dir := range dirs {
 			prettifyDir(dir)
 		}
 		return
 	}
 
-	var err error
-	if opts.InterActive { // 采用交互模式，确定或修改部分配置
-		if err = questions(settings); err != nil {
+	settings := GetDbSettings()
+	if args.IsInteract { // 采用交互模式，确定或修改部分配置
+		if err := questions(settings); err != nil {
 			fmt.Println("跳过，什么也没有做！")
 			return // 到此结束
 		}
 	}
 
-	skelBinName := "serv"
-	if opts.ExecAction == "skel" {
-		_ = reverse.SkelProject(opts.OutputDir, opts.NameSpace, skelBinName, opts.IsForce)
+	outputDir, _ := filepath.Abs(args.OutputDir)
+	args.NameSpace = filepath.Base(args.OutputDir)
+	settings.Reverse.OutputDir = filepath.Join(args.OutputDir, "models")
+	settings.Reverse.NameSpace = fmt.Sprintf("%s/models", args.NameSpace)
+	var skel *skeletonCmd
+	if skel = args.Skeleton; skel != nil {
+		_ = reverse.SkelProject(outputDir, args.NameSpace, skel.BinName, skel.IsForce)
 	}
 	rver := reverse.NewGoReverser(settings.Reverse)
 	// 生成顶部目录下init单个文件
-	if err = rver.GenModelInitFile("init"); err != nil {
+	if err := rver.GenModelInitFile("init"); err != nil {
 		panic(err)
 	}
 	var wg sync.WaitGroup
 	dbArgs := config.ReadArgs(true, nil)
-	for _, cfg := range cmd.GetConnConfigs() {
+	for _, cfg := range GetConnConfigs() {
 		if dbArgs.Size() > 0 && !dbArgs.Has(cfg.Key) {
 			continue
 		}
 		wg.Add(1)
 		go func(rver *reverse.Reverser, cfg dialect.ConnConfig) {
 			defer wg.Done()
-			err = reverseDb(rver, cfg, opts)
+			err := reverseDb(rver, cfg)
 			if err != nil {
 				fmt.Println("xx", err)
 				panic(err)
@@ -74,9 +104,9 @@ func main() {
 	}
 	wg.Wait()
 
-	fmt.Println("执行完成。", opts.ExecAction)
-	if opts.ExecAction == "skel" {
-		_ = reverse.CheckProject(opts.OutputDir, opts.NameSpace, skelBinName)
+	fmt.Println("执行完成。")
+	if skel != nil {
+		_ = reverse.CheckProject(outputDir, args.NameSpace, skel.BinName)
 	}
 }
 
@@ -92,25 +122,24 @@ func prettifyDir(dir string) {
 	}
 }
 
-func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig, opts *CommandOptions) (err error) {
-	verbose := config.Verbose()
+func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig) (err error) {
 	currDir, isXorm := rver.SetOutDir(cfg.Key), true
-	if opts.ExecAction == "mixin" { // 只进行Mixin嵌入
+	if args.Mixin != nil { // 只进行Mixin嵌入
 		isXorm = cfg.LoadDialect().IsXormDriver()
 	} else { // 生成conn单个文件
-		isXorm, err = rver.ExecuteReverse(cfg, opts.InterActive, verbose)
+		isXorm, err = rver.ExecuteReverse(cfg, args.IsInteract, args.Verbose)
 		if err != nil {
 			return
 		}
 	}
 	if isXorm { // 生成models和queries多个文件
-		err = reverse.ApplyDirMixins(currDir, verbose)
+		err = reverse.ApplyDirMixins(currDir, args.Verbose)
 	}
 	return
 }
 
 // questions 交互式问题和接收回答
-func questions(settings *cmd.DbSettings) (err error) {
+func questions(settings *DbSettings) (err error) {
 	prompt := promptui.Prompt{
 		Label:     "使用交互模式生成多组Model文件，开始",
 		IsConfirm: true,

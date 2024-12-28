@@ -12,6 +12,7 @@ type Postgres struct {
 	Host     string `hcl:"host" json:"host"`
 	Port     uint16 `hcl:"port,optional" json:"port,omitempty"`
 	Database string `hcl:"database,optional" json:"database,omitempty"`
+	Sslmode  string `hcl:"sslmode,optional" json:"sslmode,omitempty"` // 例如 disable
 }
 
 // Name 驱动名
@@ -47,6 +48,9 @@ func (d Postgres) BuildDSN() string {
 		addr = GetAddr(d.Host, d.Port)
 	}
 	dsn := fmt.Sprintf("postgres://%s/%s?", addr, d.Database)
+	if d.Sslmode != "" {
+		dsn += "sslmode=" + d.Sslmode
+	}
 	return dsn
 }
 

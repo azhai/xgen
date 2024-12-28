@@ -12,12 +12,8 @@ var (
 )
 
 func init() {
-	if config.IsRunTest() {
-		_, _ = config.BackToDir(1) // 从tests退回根目录
-		SetupConns()
-	} else {
-		_ = config.BackToAppDir()
-	}
+	config.PrepareEnv(512)
+	SetupConns()
 }
 
 func SetupConns() {

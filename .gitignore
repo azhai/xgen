@@ -16,5 +16,6 @@
 bin/
 vendor/
 
-models/*/
+models/default/models.go
+models/default/queries.go
 settings.hcl

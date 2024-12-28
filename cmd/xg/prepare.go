@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"github.com/azhai/gozzo/config"
@@ -23,7 +23,7 @@ func LoadConfigFile(reload bool) (*config.RootConfig, error) {
 			return theSettings, nil
 		}
 	}
-	theSettings, err := config.ParseConfigFile(dbSettings)
+	theSettings, err := config.ReadConfigFile(args.Config, args.Verbose, &args)
 	// 复制连接配置，用于同一个实例的不同数据库
 	if len(dbSettings.Repeats) > 0 {
 		adds := dialect.RepeatConns(dbSettings.Repeats, dbSettings.Conns)

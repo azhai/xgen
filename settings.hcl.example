@@ -14,26 +14,12 @@ reverse "golang" {
     output_dir = "./models"
     name_space = "github.com/azhai/xgen/models"
     table_prefix = "*"
-    include_tables = [ "t_*" ]
     exclude_tables = [ "*_bak", "*_test" ]
 }
 
-repeat "mysql" {
-    key = "default"
-    db_prefix = "db_"
-    db_names = []
-}
-
-conn "mysql" "default" {
-    host = "127.0.0.1"
-    database = "test"
-    username = "dba"
-    password = "pass"
+conn "sqlite" "default" {
+    path = "/tmp/test.db"
     log_file = "./logs/$KEY.log"
-}
-
-conn "sqlite" "repo" {
-    path = "/data/gitea-repos/data/gitea.db"
 }
 
 conn "redis" "cache" {
