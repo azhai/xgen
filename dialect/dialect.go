@@ -7,7 +7,7 @@ import (
 
 	"github.com/azhai/gozzo/logging/adapters/xormlog"
 	"github.com/azhai/xgen/utils"
-	"github.com/hashicorp/hcl/v2"
+	hcl "github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"xorm.io/xorm"
 )

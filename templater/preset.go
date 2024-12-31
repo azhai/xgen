@@ -9,41 +9,24 @@ var (
 	golangInitTemplate = `package {{.PkgName}}
 
 import (
-	"github.com/azhai/gozzo/config"
 	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/dialect"
 )
 
 
-var (
-	connLoaded = false
-	connCfgs   = make(map[string]dialect.ConnConfig)
-)
+var connCfgs = make(map[string]dialect.ConnConfig)
 
-func init() {
-	if config.IsRunTest() {
-		_, _ = config.BackToDir(1) // 从tests退回根目录
-		SetupConns()
-	} else {
-		_ = config.BackToAppDir()
-	}
-}
-
-func SetupConns() {
-	// 需要重新解析，因为配置可能之前解析过，当时忽略了数据库部分
-	if _, err := cmd.LoadConfigFile(true); err != nil {
+func PrepareConns(root *config.RootConfig) {
+	settings, err := cmd.GetDbSettings(root)
+	if err != nil {
 		panic(err)
 	}
-	for _, c := range cmd.GetConnConfigs() {
+	for _, c := range settings.GetConns() {
 		connCfgs[c.Key] = c
 	}
-	connLoaded = true
 }
 
 func GetConnConfig(key string) dialect.ConnConfig {
-	if connLoaded == false {
-		SetupConns()
-	}
 	if cfg, ok := connCfgs[key]; ok {
 		return cfg
 	}
@@ -123,7 +106,6 @@ func (m *{{$class}}) Save(changes map[string]any) error {
 
 import (
 	{{.AliasName}} "{{.NameSpace}}"
-
 	"github.com/azhai/xgen/dialect"
 	xq "github.com/azhai/xgen/xquery"
 	_ "{{.Import}}"

@@ -4,7 +4,7 @@ import (
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/models"
 	xq "github.com/azhai/xgen/xquery"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 	"xorm.io/xorm"
 )
 

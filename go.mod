@@ -4,12 +4,14 @@ go 1.23
 
 require (
 	github.com/alexflint/go-arg v1.5.1
-	github.com/azhai/gozzo v1.4.2
+	github.com/azhai/gozzo v1.4.4
+	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gomodule/redigo v1.9.2
 	github.com/grsmv/inflect v0.0.0-20140723132642-a28d3de3b3ad
 	github.com/hashicorp/hcl/v2 v2.23.0
 	github.com/json-iterator/go v1.1.12
 	github.com/k0kubun/pp v3.0.1+incompatible
+	github.com/lib/pq v1.10.9
 	github.com/manifoldco/promptui v0.9.0
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/mitchellh/copystructure v1.2.0
@@ -20,6 +22,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
 	github.com/alexflint/go-scalar v1.2.0 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
@@ -27,7 +30,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-playground/form/v4 v4.2.1 // indirect
-	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -55,4 +57,4 @@ require (
 	xorm.io/builder v0.3.13 // indirect
 )
 
-replace github.com/azhai/gozzo => ../gozzo
+// replace github.com/azhai/gozzo => ../gozzo

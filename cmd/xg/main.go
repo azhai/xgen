@@ -2,27 +2,31 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"sync"
 
-	"github.com/alexflint/go-arg"
+	arg "github.com/alexflint/go-arg"
 	"github.com/azhai/gozzo/config"
 	"github.com/azhai/gozzo/filesystem"
 	reverse "github.com/azhai/xgen"
+	"github.com/azhai/xgen/cmd"
 	"github.com/azhai/xgen/dialect"
+	// "github.com/azhai/xgen/models"
 	"github.com/azhai/xgen/rewrite"
 	"github.com/k0kubun/pp"
 	"github.com/manifoldco/promptui"
+
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 var args struct {
-	Pretty   *prettyCmd   `arg:"subcommand:pretty" help:"美化代码"`
-	Mixin    *mixinCmd    `arg:"subcommand:mixin" help:"嵌入Mixins"`
-	Skeleton *skeletonCmd `arg:"subcommand:skeleton" help:"生成新项目"`
-	Config   string       `arg:"-c,--config" default:"settings.hcl" help:"配置文件路径"`
-	Verbose  bool         `arg:"-v,--verbose" help:"输出详细信息"`
-	reverseOpts
+	Pretty     *prettyCmd   `arg:"subcommand:pretty" help:"美化代码"`
+	Mixin      *mixinCmd    `arg:"subcommand:mixin" help:"嵌入Mixins"`
+	Skeleton   *skeletonCmd `arg:"subcommand:skeleton" help:"生成新项目"`
+	Config     string       `arg:"-c,--config" default:"settings.hcl" help:"配置文件路径"`
+	Verbose    bool         `arg:"-v,--verbose" help:"输出详细信息"`
+	IsInteract bool         `arg:"-i,--interact" default:false help:"交互模式"`
 }
 
 type prettyCmd struct {
@@ -30,12 +34,6 @@ type prettyCmd struct {
 }
 
 type mixinCmd struct {
-}
-
-type reverseOpts struct {
-	IsInteract bool   `arg:"-i,--interact" default:false help:"交互模式"`
-	OutputDir  string `arg:"-o,--out" default:"../example" help:"输出目录"`
-	NameSpace  string `arg:"-n,--ns" default:"" help:"命名空间"`
 }
 
 type skeletonCmd struct {
@@ -46,10 +44,6 @@ type skeletonCmd struct {
 func init() {
 	config.PrepareEnv(256)
 	arg.MustParse(&args)
-	config.ReadConfigFile(args.Config, args.Verbose, &args)
-	if _, err := LoadConfigFile(false); err != nil {
-		panic(err)
-	}
 }
 
 func main() {
@@ -65,7 +59,12 @@ func main() {
 		return
 	}
 
-	settings := GetDbSettings()
+	settings := new(cmd.DbSettings)
+	_, err := config.ReadConfigFile(args.Config, settings)
+	if err != nil {
+		panic(err)
+	}
+	// models.PrepareConns(root)
 	if args.IsInteract { // 采用交互模式，确定或修改部分配置
 		if err := questions(settings); err != nil {
 			fmt.Println("跳过，什么也没有做！")
@@ -73,13 +72,13 @@ func main() {
 		}
 	}
 
-	outputDir, _ := filepath.Abs(args.OutputDir)
-	args.NameSpace = filepath.Base(args.OutputDir)
-	settings.Reverse.OutputDir = filepath.Join(args.OutputDir, "models")
-	settings.Reverse.NameSpace = fmt.Sprintf("%s/models", args.NameSpace)
+	if settings.Reverse.OutputDir == "" {
+		settings.Reverse.OutputDir = "./models"
+	}
+	outputDir, nameSpace := settings.Reverse.OutputDir, settings.Reverse.NameSpace
 	var skel *skeletonCmd
 	if skel = args.Skeleton; skel != nil {
-		_ = reverse.SkelProject(outputDir, args.NameSpace, skel.BinName, skel.IsForce)
+		_ = reverse.SkelProject(outputDir, nameSpace, skel.BinName, skel.IsForce)
 	}
 	rver := reverse.NewGoReverser(settings.Reverse)
 	// 生成顶部目录下init单个文件
@@ -88,7 +87,7 @@ func main() {
 	}
 	var wg sync.WaitGroup
 	dbArgs := config.ReadArgs(true, nil)
-	for _, cfg := range GetConnConfigs() {
+	for _, cfg := range settings.GetConns() {
 		if dbArgs.Size() > 0 && !dbArgs.Has(cfg.Key) {
 			continue
 		}
@@ -106,7 +105,7 @@ func main() {
 
 	fmt.Println("执行完成。")
 	if skel != nil {
-		_ = reverse.CheckProject(outputDir, args.NameSpace, skel.BinName)
+		_ = reverse.CheckProject(outputDir, nameSpace, skel.BinName)
 	}
 }
 
@@ -139,7 +138,7 @@ func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig) (err error) {
 }
 
 // questions 交互式问题和接收回答
-func questions(settings *DbSettings) (err error) {
+func questions(settings *cmd.DbSettings) (err error) {
 	prompt := promptui.Prompt{
 		Label:     "使用交互模式生成多组Model文件，开始",
 		IsConfirm: true,
