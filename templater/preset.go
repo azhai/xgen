@@ -52,9 +52,17 @@ type {{$class}} struct { {{- range $table.ColumnsSeq}}{{$col := $table.GetColumn
 	{{ColumnMapper $col.Name}} {{Type $col}} %s{{Tag $table $col "json" "form"}}%s{{end}}
 }
 
+// TableName {{$class}}的表名
 func (*{{$class}}) TableName() string {
 	return "{{$table_name}}"
 }
+{{if ne $table.Comment ""}}
+
+// TableComment {{$class}}的备注
+func (*{{$class}}) TableComment() string {
+	return "{{$table.Comment}}"
+}
+{{end -}}
 {{end}}
 `, "`", "`")
 

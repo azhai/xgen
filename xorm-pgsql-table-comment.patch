@@ -1,0 +1,35 @@
+--- dialects/postgres.go	2025-05-09 18:26:58
++++ dialects/postgres.go.new	2025-05-09 18:26:01
+@@ -1247,11 +1247,13 @@
+ 
+ func (db *postgres) GetTables(queryer core.Queryer, ctx context.Context) ([]*schemas.Table, error) {
+ 	args := []interface{}{}
+-	s := "SELECT tablename FROM pg_tables"
++	s := "SELECT relname, obj_description(oid) FROM pg_class WHERE relkind = 'r'"
+ 	schema := db.getSchema()
+ 	if schema != "" {
+-		args = append(args, schema)
+-		s = s + " WHERE schemaname = $1"
++		args = append(args, "standard "+schema+" schema")
++		s = s + " AND obj_description(relnamespace) = $1"
++	} else {
++		s = s + " AND obj_description(relnamespace) LIKE 'standard % schema'"
+ 	}
+ 
+ 	rows, err := queryer.QueryContext(ctx, s, args...)
+@@ -1263,12 +1265,12 @@
+ 	tables := make([]*schemas.Table, 0)
+ 	for rows.Next() {
+ 		table := schemas.NewEmptyTable()
+-		var name string
+-		err = rows.Scan(&name)
++		var name, comment string
++		err = rows.Scan(&name, &comment)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+-		table.Name = name
++		table.Name, table.Comment = name, comment
+ 		tables = append(tables, table)
+ 	}
+ 	if rows.Err() != nil {

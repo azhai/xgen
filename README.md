@@ -11,6 +11,7 @@ cd vendor/xorm.io/xorm/
 #xorm 1.3.x
 patch -p0 < ../../../xorm-unsigned-double-type.patch
 patch -p0 < ../../../xorm-unsigned-double-mysql.patch
+patch -p0 < ../../../xorm-pgsql-table-comment.patch
 #xorm 1.2.x
 patch -p1 < ../../../xorm-mysql-unsigned-float.patch
 cd -

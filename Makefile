@@ -9,8 +9,12 @@ endif
 GOBIN    = go
 UPXBIN   = upx
 #GOOS    = $(shell uname -s | tr [A-Z] [a-z])
-#GOARCH  = $(shell uname -m | tr [A-Z] [a-z])
-GOARGS   = GOAMD64=$(GOAMD64) CGO_ENABLED=1
+GOARCH  = $(shell uname -m | tr [A-Z] [a-z])
+ifeq ($(GOARCH), amd64)
+	GOARGS = GOAMD64=$(GOAMD64) CGO_ENABLED=1
+else
+	GOARGS = CGO_ENABLED=0
+endif
 RELEASE  = "-s -w"
 GOBUILD  = $(GOARGS) $(GOBIN) build -ldflags=$(RELEASE)
 BINFILES = $(SINGLETON) $(COMMANDS)

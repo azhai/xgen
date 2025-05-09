@@ -1,9 +1,13 @@
 
 .DS_Store
+._*
 *.bak
 *.cache
 *.log
 *.lock
+*.new
+*.old
+*.out
 *.swap
 *.swp
 *.sublime-project
