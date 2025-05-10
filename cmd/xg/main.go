@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	arg "github.com/alexflint/go-arg"
+	"github.com/alexflint/go-arg"
 	"github.com/azhai/gozzo/config"
 	"github.com/azhai/gozzo/filesystem"
 	reverse "github.com/azhai/xgen"

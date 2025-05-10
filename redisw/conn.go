@@ -19,7 +19,7 @@ const (
 
 var (
 	StrToList      = utils.StrToList // 将字符串数组转为一般数组
-	KeysEmptyError = fmt.Errorf("the param which named 'keys' must not empty !")
+	KeysEmptyError = fmt.Errorf("the param which named 'keys' must not empty")
 )
 
 // ReplyBool redigo没有将应答中的OK转为bool值(2020-01-16)

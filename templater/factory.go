@@ -3,7 +3,7 @@ package templater
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	theFactory   = NewFactory("./").UpdateFuncs(defaultFuncs)
+	theFactory   = NewFactory("./", true).UpdateFuncs(defaultFuncs)
 	defaultFuncs = template.FuncMap{
 		"Lower":         strings.ToLower,
 		"Upper":         strings.ToUpper,
@@ -64,22 +64,24 @@ func RenderTemplate(tmpl *template.Template, data any) ([]byte, error) {
 
 // Factory 模板工厂，可设置模板目录用于扫描.tmpl文件
 type Factory struct {
-	discoverDir string
-	presetTexts map[string]string
-	presetTmpls map[string]*template.Template
-	SharedFuncs template.FuncMap
+	inclSubFiles bool
+	discoverDir  string
+	presetTexts  map[string]string
+	presetTmpls  map[string]*template.Template
+	SharedFuncs  template.FuncMap
 }
 
 // NewFactory 创建工厂，可选的模板目录
-func NewFactory(dir string) *Factory {
+func NewFactory(dir string, inclSubs bool) *Factory {
 	if dir != "" {
 		dir, _ = filepath.Abs(dir)
 	}
 	return &Factory{
-		discoverDir: dir,
-		presetTexts: make(map[string]string),
-		presetTmpls: make(map[string]*template.Template),
-		SharedFuncs: make(template.FuncMap),
+		inclSubFiles: inclSubs,
+		discoverDir:  dir,
+		presetTexts:  make(map[string]string),
+		presetTmpls:  make(map[string]*template.Template),
+		SharedFuncs:  make(template.FuncMap),
 	}
 }
 
@@ -91,24 +93,35 @@ func (f *Factory) UpdateFuncs(funcs template.FuncMap) *Factory {
 	return f
 }
 
+// AddSubs 加载子模板
+func (f *Factory) AddSubs(tmpl *template.Template) *template.Template {
+	if f.inclSubFiles && tmpl != nil {
+		globPath := filepath.Join(f.discoverDir, "sub_*.tmpl")
+		tmpl, _ = tmpl.ParseGlob(globPath)
+	}
+	return tmpl
+}
+
 // GetTemplate 根据名称获取模板对象，先找已注册模板，再找模板目录下文件
 func (f *Factory) GetTemplate(name string, funcs template.FuncMap) *template.Template {
 	if tmpl, ok := f.presetTmpls[name]; ok && len(funcs) == 0 {
-		return tmpl
+		return f.AddSubs(tmpl)
 	}
 	if content, ok := f.presetTexts[name]; ok { // 残缺模板，funcs不齐全，只记录了内容
 		tmpl := template.New(name).Funcs(f.SharedFuncs)
 		if len(funcs) > 0 {
 			tmpl = tmpl.Funcs(funcs)
 		}
-		return template.Must(tmpl.Parse(content))
+		tmpl = template.Must(tmpl.Parse(content))
+		return f.AddSubs(tmpl)
 	}
 	if f.discoverDir == "" {
 		return nil
 	}
 	filename := filepath.Join(f.discoverDir, name+".tmpl")
 	if size, _ := utils.FileSize(filename); size > 0 {
-		return f.RegisterFile(filename, funcs)
+		tmpl := f.RegisterFile(filename, funcs)
+		return f.AddSubs(tmpl)
 	}
 	return nil
 }
@@ -131,7 +144,7 @@ func (f *Factory) Register(name, content string, funcs template.FuncMap) *templa
 
 // RegisterFile 注册模板文件
 func (f *Factory) RegisterFile(filename string, funcs template.FuncMap) *template.Template {
-	fileData, err := ioutil.ReadFile(filename)
+	fileData, err := os.ReadFile(filename)
 	if err != nil {
 		return nil
 	}

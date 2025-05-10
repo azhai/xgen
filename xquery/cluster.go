@@ -62,28 +62,28 @@ type ClusterMixin struct {
 }
 
 func NewClusterMixin(kind string, t time.Time) *ClusterMixin {
-	m := &ClusterMixin{Kind: kind}
+	m := &ClusterMixin{Kind: strings.ToLower(kind)}
 	return m.SetTime(t, true)
 }
 
 func NewClusterQuarterly(t time.Time) *ClusterMixin {
-	return NewClusterMixin("Quarterly", t)
+	return NewClusterMixin("quarterly", t)
 }
 
 func NewClusterMonthly(t time.Time) *ClusterMixin {
-	return NewClusterMixin("Monthly", t)
+	return NewClusterMixin("monthly", t)
 }
 
 func NewClusterWeekly(t time.Time) *ClusterMixin {
-	return NewClusterMixin("Weekly", t)
+	return NewClusterMixin("weekly", t)
 }
 
 func NewClusterDaily(t time.Time) *ClusterMixin {
-	return NewClusterMixin("Daily", t)
+	return NewClusterMixin("daily", t)
 }
 
 func NewClusterHourly(t time.Time) *ClusterMixin {
-	return NewClusterMixin("Hourly", t)
+	return NewClusterMixin("hourly", t)
 }
 
 func (m ClusterMixin) GetSuffix() string {
@@ -112,21 +112,21 @@ func (m *ClusterMixin) SetTime(t time.Time, toFirst bool) *ClusterMixin {
 	loc := time.Local
 	year, month, day := t.Date()
 	switch m.Kind {
-	case "Quarterly":
+	case "quarterly":
 		month = (month + 2) / 3
 		m.Date = time.Date(year, month, 1, 0, 0, 0, 0, loc)
 		m.Format = "%Y%Q"
-	case "Monthly":
+	case "monthly":
 		m.Date = time.Date(year, month, 1, 0, 0, 0, 0, loc)
 		m.Format = "200601"
-	case "Weekly":
+	case "weekly":
 		day = day - int(t.Weekday())
 		m.Date = time.Date(year, month, day, 0, 0, 0, 0, loc)
 		m.Format = "%R0%W"
-	case "Daily":
+	case "daily":
 		m.Date = time.Date(year, month, day, 0, 0, 0, 0, loc)
 		m.Format = "20060102"
-	case "Hourly":
+	case "hourly":
 		m.Date = time.Date(year, month, day, t.Hour(), 0, 0, 0, loc)
 		m.Format = "2006010215"
 	}
@@ -135,15 +135,15 @@ func (m *ClusterMixin) SetTime(t time.Time, toFirst bool) *ClusterMixin {
 
 func (m *ClusterMixin) Move(n int) *ClusterMixin {
 	switch m.Kind {
-	case "Quarterly":
+	case "quarterly":
 		m.Date = m.Date.AddDate(0, n*3, 0)
-	case "Monthly":
+	case "monthly":
 		m.Date = m.Date.AddDate(0, n, 0)
-	case "Weekly":
+	case "weekly":
 		m.Date = m.Date.AddDate(0, 0, n*7)
-	case "Daily":
+	case "daily":
 		m.Date = m.Date.AddDate(0, 0, n)
-	case "Hourly":
+	case "hourly":
 		m.Date = m.Date.Add(time.Hour * time.Duration(n))
 	}
 	return m

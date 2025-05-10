@@ -5,7 +5,6 @@ import (
 	"time"
 
 	xutils "github.com/azhai/xgen/utils"
-
 	"github.com/mitchellh/copystructure"
 	"xorm.io/xorm"
 )
@@ -167,7 +166,7 @@ func NewRowIterator(bean any, order string, desc bool, size, msec int) *RowItera
 }
 
 // IsEnough 没有更多行需要查询了
-func (r RowIterator) IsEnough(n int) bool {
+func (r *RowIterator) IsEnough(n int) bool {
 	if n <= 0 {
 		return true
 	}
@@ -183,7 +182,7 @@ func (r *RowIterator) prepare(eng *xorm.Engine, opts []QueryOption) []QueryOptio
 		table := model.TableName()
 		opts = append(opts, WithTable(table))
 		if r.orderCol == "" {
-			r.orderCol = GetPrimarykey(eng, model).Name
+			r.orderCol = GetPrimaryKey(eng, model).Name
 		}
 	}
 	// 查询符合条件的总行数
@@ -192,13 +191,12 @@ func (r *RowIterator) prepare(eng *xorm.Engine, opts []QueryOption) []QueryOptio
 }
 
 // IterBean 迭代查询对象
-func (r RowIterator) IterBean(qr *xorm.Session, proc BeanFunc,
+func (r *RowIterator) IterBean(qr *xorm.Session, proc BeanFunc,
 	opts []QueryOption,
 ) (count int64, err error) {
 	rows := new(xorm.Rows)
-	id, n := int64(0), 0
-	for err == nil {
-		n = 0
+	for {
+		id, n := int64(0), 0
 		rows, err = ApplyOptions(qr, opts).Rows(r.Bean)
 		for rows.Next() {
 			n++
@@ -232,7 +230,7 @@ func (r RowIterator) IterBean(qr *xorm.Session, proc BeanFunc,
 }
 
 // IterCol 迭代查询主键
-func (r RowIterator) IterCol(qr *xorm.Session, proc BeanFunc,
+func (r *RowIterator) IterCol(qr *xorm.Session, proc BeanFunc,
 	col string, opts []QueryOption,
 ) (count int64, err error) {
 	if col == "" {

@@ -193,7 +193,7 @@ func (rh *RedisHash) LoadMapInt(keys ...string) (map[string]int, error) {
 // / redis string 和 hash 协作的方法                        ///
 // //////////////////////////////////////////////////////////
 
-// 基本类型保存于自身，CacheData数据关联保存为Json
+// SaveForeignData 基本类型保存于自身，CacheData数据关联保存为Json
 func (rh *RedisHash) SaveForeignData(data Map) (ok bool, err error) {
 	summary, timeout := NewMap(), rh.GetTimeout(true)
 	for key, val := range data {
@@ -228,7 +228,7 @@ func (rh *RedisHash) LoadSummary(data Map) (map[string]string, error) {
 	return rh.LoadMapString(keys...)
 }
 
-// 只能得到CacheData数据的Map，基本类型需要自己加载
+// LoadForeignJson 只能得到CacheData数据的Map，基本类型需要自己加载
 func (rh *RedisHash) LoadForeignJson(data Map) (err error) {
 	var summary map[string]string
 	if summary, err = rh.LoadSummary(data); err != nil {
@@ -261,7 +261,7 @@ func (rh *RedisHash) LoadForeignString(keys ...string) (result map[string]string
 	return
 }
 
-// 对list、dict或string的json，去掉两边括号或引号取中间部分
+// GetJsonContent 对list、dict或string的json，去掉两边括号或引号取中间部分
 // 用于快速拼接json，免除判断类型和空值，如 fmt.Sprintf("{%s}", GetJsonContent(json))
 func GetJsonContent(data string) string {
 	data = strings.TrimSpace(data)

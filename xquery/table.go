@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/azhai/xgen/utils"
-
 	"xorm.io/xorm"
 	"xorm.io/xorm/schemas"
 )
@@ -68,20 +67,20 @@ func FindTables(engine *xorm.Engine, prefix string, fullName bool) []string {
 // CreateTableLike 复制表结构，只用于MySQL
 func CreateTableLike(engine *xorm.Engine, curr, orig string) (bool, error) {
 	if engine.DriverName() != "mysql" {
-		err := fmt.Errorf("only support mysql/mariadb database !")
+		err := fmt.Errorf("only support mysql/mariadb database")
 		return false, err
 	}
 	exists, err := engine.IsTableExist(curr)
 	if err != nil || exists {
 		return false, err
 	}
-	sql := "CREATE TABLE IF NOT EXISTS %s LIKE %s"
-	_, err = engine.Exec(Qprintf(engine, sql, curr, orig))
+	sqlCreate := "CREATE TABLE IF NOT EXISTS %s LIKE %s"
+	_, err = engine.Exec(Qprintf(engine, sqlCreate, curr, orig))
 	return err == nil, err
 }
 
-// GetPrimarykey 获取Model的主键
-func GetPrimarykey(engine *xorm.Engine, m any) *schemas.Column {
+// GetPrimaryKey 获取Model的主键
+func GetPrimaryKey(engine *xorm.Engine, m any) *schemas.Column {
 	table, err := engine.TableInfo(m)
 	if err != nil {
 		return nil

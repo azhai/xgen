@@ -9,7 +9,7 @@ import (
 
 // JoinQuery 联表查询
 func JoinQuery(engine *xorm.Engine, query *xorm.Session,
-	table, fkey string, foreign ForeignTable,
+		table, fkey string, foreign ForeignTable,
 ) (*xorm.Session, []string) {
 	frgTable, frgAlias := foreign.TableName(), foreign.AliasName()
 	cond := Qprintf(engine, "%s.%s = %s.%s", table, fkey, frgAlias, foreign.Index)
@@ -94,7 +94,7 @@ func (q *LeftJoinQuery) LeftJoin(foreign ITableName, fkey string) *LeftJoinQuery
 // AddLeftJoin 添加次序要和 struct 定义一致
 func (q *LeftJoinQuery) AddLeftJoin(foreign ITableName, pkey, fkey, alias string) *LeftJoinQuery {
 	if pkey == "" {
-		col := GetPrimarykey(q.engine, foreign)
+		col := GetPrimaryKey(q.engine, foreign)
 		if col != nil {
 			pkey = col.Name
 		}
@@ -134,7 +134,7 @@ func (q *LeftJoinQuery) Count(bean ...any) (int64, error) {
 
 // FindAndCount 计数和获取结果集
 func (q *LeftJoinQuery) FindAndCount(
-	rowsSlicePtr any, condiBean ...any,
+		rowsSlicePtr any, condiBean ...any,
 ) (int64, error) {
 	total, err := q.Count()
 	if err != nil || total == 0 {
@@ -146,7 +146,7 @@ func (q *LeftJoinQuery) FindAndCount(
 
 // FindPage 计数和翻页，只获取部分结果集
 func (q *LeftJoinQuery) FindPage(pageno, pagesize int,
-	rowsSlicePtr any, condiBean ...any,
+		rowsSlicePtr any, condiBean ...any,
 ) (int64, error) {
 	total, err := q.Count()
 	limit, offset := CalcPage(pageno, pagesize, int(total))
