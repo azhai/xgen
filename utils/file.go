@@ -3,6 +3,9 @@ package utils
 import (
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/azhai/gozzo/filesystem"
 )
 
 const (
@@ -41,4 +44,19 @@ func MkdirForFile(path string) int64 {
 		_ = os.MkdirAll(dir, DefaultDirMode)
 	}
 	return size
+}
+
+// GetGolangFile 找出目录下（不含子目录）的所有Go文件
+func GetGolangFile(theDir string, exclTest bool) (filenames []string) {
+	if _, isExists := FileSize(theDir); !isExists {
+		return
+	}
+	files, _ := filesystem.FindFiles(theDir, ".go")
+	for filename := range files {
+		if exclTest && strings.HasSuffix(filename, "_test.go") {
+			continue
+		}
+		filenames = append(filenames, filename)
+	}
+	return
 }

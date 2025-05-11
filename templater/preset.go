@@ -44,17 +44,16 @@ import ({{- range $imp, $al := .Imports}}
 )
 {{end -}}
 
-{{range $table_name, $table := .Tables}}
-{{$class := TableMapper $table.Name}}
+{{range $class, $table := .Tables}}
 
 // {{$class}} {{$table.Comment}}
 type {{$class}} struct { {{- range $table.ColumnsSeq}}{{$col := $table.GetColumn .}}
-	{{ColumnMapper $col.Name}} {{Type $col}} %s{{Tag $table $col "json" "form"}}%s{{end}}
+	{{$col.FieldName}} {{Type $col}} %s{{Tag $table $col "json" "form"}}%s{{end}}
 }
 
 // TableName {{$class}}的表名
 func (*{{$class}}) TableName() string {
-	return "{{$table_name}}"
+	return "{{$table.Name}}"
 }
 {{if ne $table.Comment ""}}
 
@@ -78,10 +77,9 @@ import (
 )
 {{end -}}
 
-{{range .Tables}}
-{{$class := TableMapper .Name -}}
-{{$pkey := GetSinglePKey . -}}
-{{$created := GetCreatedColumn . -}}
+{{range $class, $table := .Tables}}
+{{$pkey := GetSinglePKey $table -}}
+{{$created := GetCreatedColumn $table -}}
 
 // Load the queries of {{$class}}
 func (m *{{$class}}) Load(opts ...xq.QueryOption) (bool, error) {
@@ -135,7 +133,7 @@ func Engine() *xorm.Engine {
 	if engine == nil {
 		cfg := models.GetConnConfig("{{.ConnName}}")
 		engine = ConnectXorm(cfg)
-		// engine.Sync()
+		_ = SyncModels(engine)
 	}
 	return engine
 }
@@ -174,6 +172,16 @@ func UpdateBatch(tableName, pkey string, ids any, changes map[string]any) error 
 		return tx.Table(tableName).In(pkey, ids).Update(changes)
 	}
 	return xq.ExecTx(Engine(), modify)
+}
+
+// SyncModels 同步数据库表结构
+func SyncModels(eng *xorm.Engine) error {
+	if eng == nil {
+		return fmt.Errorf("the connection is lost")
+	}
+	return eng.Sync({{range .Classes}}
+		&{{.}}{},{{end}}
+	)
 }
 `
 

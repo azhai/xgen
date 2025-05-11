@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/azhai/gozzo/filesystem"
 	"github.com/azhai/gozzo/match"
 	"github.com/azhai/xgen/utils"
 	"github.com/pkg/errors"
@@ -80,6 +79,35 @@ func (c *Composer) RegisterSubstitute(sub *ModelSummary) {
 		}
 		c.subModels[sub.Name] = sub
 	}
+}
+
+// AddFormerMixins 将文件中符合的Mixin类先行注册
+func (c *Composer) AddFormerMixins(filename, nameSpace, alias string) []string {
+	fileParser, err := NewFileParser(filename)
+	if err != nil {
+		return nil
+	}
+	var mixinNames []string
+	// 以Core或Mixin结尾的类才会嵌入Model中
+	for _, node := range fileParser.FindDeclNode("type", MixinWildcards...) {
+		if len(node.Fields) == 0 {
+			continue
+		}
+		summary := &ModelSummary{Import: nameSpace, Alias: alias}
+		if alias == AdaptivePkgName {
+			alias = fileParser.GetPackage()
+		}
+		name := node.GetName()
+		if alias == "" {
+			summary.Name = name
+		} else {
+			summary.Name = fmt.Sprintf("%s.%s", alias, name)
+		}
+		_ = summary.ParseFields(fileParser, node)
+		c.RegisterSubstitute(summary)
+		mixinNames = append(mixinNames, summary.Name)
+	}
+	return mixinNames
 }
 
 // RemoveSubstitute 删除可替换Model
@@ -310,8 +338,8 @@ func (s *ModelSummary) ScanAndUseMixins(sub *ModelSummary, deep, verbose bool) (
 // ReplaceModelFields 将Mixin写入到Model内，替代它的部分字段
 func ReplaceModelFields(cp *CodeParser, node *DeclNode, summary *ModelSummary) {
 	var last ast.Node
-	max := len(node.Fields) - 1
-	first, lastField := ast.Node(node.Fields[0]), node.Fields[max]
+	tail := len(node.Fields) - 1
+	first, lastField := ast.Node(node.Fields[0]), node.Fields[tail]
 	if lastField.Comment != nil {
 		last = ast.Node(lastField.Comment)
 	} else {
@@ -320,46 +348,11 @@ func ReplaceModelFields(cp *CodeParser, node *DeclNode, summary *ModelSummary) {
 	cp.AddReplace(first, last, summary.GetInnerCode())
 }
 
-// AddFormerMixins 将文件中符合的Mixin类先行注册
-func AddFormerMixins(cps *Composer, filename, nameSpace, alias string) []string {
-	cp, err := NewFileParser(filename)
-	if err != nil {
-		return nil
-	}
-	var mixinNames []string
-	// 以Core或Mixin结尾的类才会嵌入Model中
-	for _, node := range cp.FindDeclNode("type", MixinWildcards...) {
-		if len(node.Fields) == 0 {
-			continue
-		}
-		summary := &ModelSummary{Import: nameSpace, Alias: alias}
-		if alias == AdaptivePkgName {
-			alias = cp.GetPackage()
-		}
-		name := node.GetName()
-		if alias == "" {
-			summary.Name = name
-		} else {
-			summary.Name = fmt.Sprintf("%s.%s", alias, name)
-		}
-		_ = summary.ParseFields(cp, node)
-		cps.RegisterSubstitute(summary)
-		mixinNames = append(mixinNames, summary.Name)
-	}
-	return mixinNames
-}
-
 // PrepareMixins 扫描目录中的可注册Mixin，并声明为某个NameSpace下
 func PrepareMixins(mixinDir, mixinNS string) (mixinNames []string) {
-	if _, isExists := utils.FileSize(mixinDir); !isExists {
-		return
-	}
-	files, _ := filesystem.FindFiles(mixinDir, ".go")
-	for filename := range files {
-		if strings.HasSuffix(filename, "_test.go") {
-			continue
-		}
-		newNames := AddFormerMixins(globaltComposer, filename, mixinNS, AdaptivePkgName)
+	files := utils.GetGolangFile(mixinDir, true)
+	for _, filename := range files {
+		newNames := globaltComposer.AddFormerMixins(filename, mixinNS, AdaptivePkgName)
 		mixinNames = append(mixinNames, newNames...)
 	}
 	return

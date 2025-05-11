@@ -9,9 +9,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
-	"github.com/azhai/gozzo/filesystem"
 	"github.com/azhai/gozzo/match"
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/rewrite"
@@ -44,22 +44,6 @@ type ReverseConfig struct {
 	QueryTemplatePath string   `hcl:"query_template_path,optional" json:"query_template_path,omitempty"`
 }
 
-// GetTablePrefixes 获取可用表名前缀
-func (c *ReverseConfig) GetTablePrefixes() []string {
-	var prefixes []string     // 不使用表名前缀
-	if c.TablePrefix == "*" { // 使用所有的包含列标前缀
-		for _, pre := range c.IncludeTables {
-			pre = strings.TrimRight(pre, "*")
-			if !strings.Contains(pre, "*") { // 原正则式是右匹配
-				prefixes = append(prefixes, pre)
-			}
-		}
-	} else if c.TablePrefix != "" { // 仅一个固定前缀
-		prefixes = append(prefixes, c.TablePrefix)
-	}
-	return prefixes
-}
-
 // GetTemplateName 获取模板名称，优先使用配置，然后是预设模板
 func (c *ReverseConfig) GetTemplateName(name string) string {
 	switch strings.ToLower(name) {
@@ -78,17 +62,54 @@ func (c *ReverseConfig) GetTemplateName(name string) string {
 	}
 }
 
+// GetTablePrefixes 获取可用表名前缀
+func (c *ReverseConfig) GetTablePrefixes() []string {
+	var prefixes []string     // 不使用表名前缀
+	if c.TablePrefix == "*" { // 使用所有的包含列标前缀
+		for _, pre := range c.IncludeTables {
+			pre = strings.TrimRight(pre, "*")
+			if !strings.Contains(pre, "*") { // 原正则式是右匹配
+				prefixes = append(prefixes, pre)
+			}
+		}
+	} else if c.TablePrefix != "" { // 仅一个固定前缀
+		prefixes = append(prefixes, c.TablePrefix)
+	}
+	return prefixes
+}
+
+// FilterTables 按照ExcludeTables和IncludeTables配置过滤数据表
+func (c *ReverseConfig) FilterTables(tables []*schemas.Table, tailDigits int) []*schemas.Table {
+	res := make([]*schemas.Table, 0, len(tables))
+	inclMatchers, exclMatchers := match.NewGlobs(c.IncludeTables), match.NewGlobs(c.ExcludeTables)
+	digitsReg := regexp.MustCompile(fmt.Sprintf("_[0-9]{%d,}", tailDigits))
+	for _, tb := range tables {
+		// 排除4个数字以上结尾的分表
+		if tailDigits > 0 && digitsReg.MatchString(tb.Name) {
+			continue
+		}
+		if exclMatchers.MatchAny(tb.Name, false) {
+			continue
+		}
+		if inclMatchers.MatchAny(tb.Name, true) {
+			res = append(res, tb)
+		}
+	}
+	return res
+}
+
 // Reverser model反转器
 type Reverser struct {
-	currOutDir string
-	lang       *Language
-	target     *ReverseConfig
+	outDir string
+	lang   *Language
+	target *ReverseConfig
+	tables map[string]*schemas.Table
 }
 
 // NewGoReverser 创建Golang反转器
 func NewGoReverser(target *ReverseConfig) *Reverser {
 	rewrite.PrepareMixins(target.MixinDir, target.MixinNS)
-	return &Reverser{lang: golang, target: target}
+	return &Reverser{lang: golang, target: target, tables: nil}
 }
 
 // Clone 克隆生成副本，用于不同协程中
@@ -107,17 +128,17 @@ func (r *Reverser) GetFormatter() Formatter {
 // SetOutDir 设置输出子目录
 func (r *Reverser) SetOutDir(key string) string {
 	if key == "" {
-		r.currOutDir = r.target.OutputDir
+		r.outDir = r.target.OutputDir
 	} else {
-		r.currOutDir = filepath.Join(r.target.OutputDir, key)
+		r.outDir = filepath.Join(r.target.OutputDir, key)
 	}
-	_ = os.MkdirAll(r.currOutDir, utils.DefaultDirMode)
-	return r.currOutDir
+	_ = os.MkdirAll(r.outDir, utils.DefaultDirMode)
+	return r.outDir
 }
 
 // GetOutFileName 获取输出文件名
 func (r *Reverser) GetOutFileName(name string) string {
-	return filepath.Join(r.currOutDir, name+r.lang.ExtName)
+	return filepath.Join(r.outDir, name+r.lang.ExtName)
 }
 
 // GenModelInitFile 生成models目录下的init文件
@@ -140,7 +161,7 @@ func (r *Reverser) GenModelInitFile(tmplName string) error {
 }
 
 // ExecuteReverse 生成单个数据库下的代码文件，一个数据库一个子目录
-func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbose bool) (bool, error) {
+func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, verbose bool) (bool, error) {
 	dia := source.LoadDialect()
 	pkgName := aliasNameSpace(source.Key)
 	data := map[string]any{
@@ -154,10 +175,27 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 		data["AliasName"] = ""
 	}
 
-	tmplName, isXorm := "xorm", true
-	if !dia.IsXormDriver() {
-		tmplName, isXorm = source.Type, false
+	tmplName, isXorm := source.Type, false
+	if dia.IsXormDriver() {
+		tmplName, isXorm = "xorm", true
+		tableSchemas, err := source.QuickConnect(verbose, verbose).DBMetas()
+		if err != nil {
+			fmt.Println(err)
+			return true, err
+		}
+		tableSchemas = r.target.FilterTables(tableSchemas, 4)
+		if len(tableSchemas) > 0 {
+			err = r.ReverseTables(pkgName, tableSchemas)
+			var classes []string
+			for name := range r.tables {
+				classes = append(classes, name)
+			}
+			sort.Strings(classes)
+			data["Classes"] = classes
+		}
 	}
+
+	// 生成conn单个文件
 	tmpl := templater.LoadTemplate(tmplName, nil)
 	if codeText, err := templater.RenderTemplate(tmpl, data); err == nil {
 		formatter := r.GetFormatter()
@@ -166,42 +204,25 @@ func (r *Reverser) ExecuteReverse(source dialect.ConnConfig, interActive, verbos
 			return isXorm, err
 		}
 	}
-	if !isXorm { // 缓存到此结束
-		return false, nil
-	}
-
-	tableSchemas, err := source.QuickConnect(verbose, verbose).DBMetas()
-	if err != nil {
-		fmt.Println(err)
-	}
-	tableSchemas = FilterTables(tableSchemas, r.target.IncludeTables, r.target.ExcludeTables, 4)
-	if len(tableSchemas) > 0 {
-		err = r.ReverseTables(pkgName, tableSchemas)
-	}
-	return true, err
+	return isXorm, nil
 }
 
 // ReverseTables 生成单个数据的model和query文件，或者一张表一个文件（当MultipleFiles=true）
 func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) error {
 	tbMapper := convertMapper(r.target.TableMapper).Table2Obj
 	colMapper := convertMapper(r.target.ColumnMapper).Table2Obj
-	funcs := r.lang.Funcs
-	funcs["TableMapper"], funcs["ColumnMapper"] = tbMapper, colMapper
-	tables := make(map[string]*schemas.Table)
 	tablePrefixes := r.target.GetTablePrefixes()
 
 	fmt.Println("")
+	r.tables = make(map[string]*schemas.Table)
 	for _, table := range tableSchemas {
-		tableName := table.Name
-		fmt.Println(".", pkgName, tableName)
+		className := tbMapper(trimAnyPrefix(table.Name, tablePrefixes))
+		fmt.Println(".", pkgName, className)
 		table.Name = strings.ReplaceAll(table.Name, "-", "_")
-		if len(tablePrefixes) > 0 {
-			table.Name = trimAnyPrefix(table.Name, tablePrefixes)
-		}
 		for _, col := range table.Columns() {
 			col.FieldName = colMapper(col.Name)
 		}
-		tables[tableName] = table
+		r.tables[className] = table
 	}
 	data := map[string]any{
 		"PkgName":       pkgName,
@@ -214,10 +235,10 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 	tmpl := r.lang.Template
 	if tmpl == nil {
 		tmplName := r.target.GetTemplateName("model")
-		tmpl = templater.LoadTemplate(tmplName, funcs)
+		tmpl = templater.LoadTemplate(tmplName, r.lang.Funcs)
 	}
 	if r.target.MultipleFiles { // 每张表一个文件
-		for tableName, table := range tables {
+		for tableName, table := range r.tables {
 			tbs := map[string]*schemas.Table{tableName: table}
 			data["Tables"], data["Imports"] = tbs, importter(tbs)
 			codeText, err := templater.RenderTemplate(tmpl, data)
@@ -230,7 +251,7 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 			}
 		}
 	} else {
-		data["Tables"], data["Imports"] = tables, importter(tables)
+		data["Tables"], data["Imports"] = r.tables, importter(r.tables)
 		codeText, err := templater.RenderTemplate(tmpl, data)
 		if err != nil {
 			return err
@@ -241,7 +262,7 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 		}
 
 		tmplName := r.target.GetTemplateName("query")
-		tmpl = templater.LoadTemplate(tmplName, funcs)
+		tmpl = templater.LoadTemplate(tmplName, r.lang.Funcs)
 		data["Imports"] = map[string]string{}
 		codeText, err = templater.RenderTemplate(tmpl, data)
 		if err != nil {
@@ -255,42 +276,17 @@ func (r *Reverser) ReverseTables(pkgName string, tableSchemas []*schemas.Table) 
 	return nil
 }
 
-// FilterTables 按照ExcludeTables和IncludeTables配置过滤数据表
-func FilterTables(tables []*schemas.Table, includes, excludes []string, tailDigits int) []*schemas.Table {
-	res := make([]*schemas.Table, 0, len(tables))
-	inclMatchers, exclMatchers := match.NewGlobs(includes), match.NewGlobs(excludes)
-	digitsReg := regexp.MustCompile(fmt.Sprintf("_[0-9]{%d,}", tailDigits))
-	for _, tb := range tables {
-		// 排除4个数字以上结尾的分表
-		if tailDigits > 0 && digitsReg.MatchString(tb.Name) {
-			continue
-		}
-		if exclMatchers.MatchAny(tb.Name, false) {
-			continue
-		}
-		if inclMatchers.MatchAny(tb.Name, true) {
-			res = append(res, tb)
-		}
-	}
-	return res
-}
-
 // ApplyDirMixins 将已知的Mixin嵌入到匹配的Model中
 func ApplyDirMixins(currDir string, verbose bool) (err error) {
-	files, _ := filesystem.FindFiles(currDir, ".go")
+	files := utils.GetGolangFile(currDir, true)
 	if verbose && len(files) > 0 {
 		fmt.Println("")
 	}
-	notTestFiles := make([]string, 0)
 	cps := rewrite.NewComposer()
-	for filename := range files {
-		if strings.HasSuffix(filename, "_test.go") {
-			continue
-		}
-		rewrite.AddFormerMixins(cps, filename, "", "")
-		notTestFiles = append(notTestFiles, filename)
+	for _, filename := range files {
+		cps.AddFormerMixins(filename, "", "")
 	}
-	for _, filename := range notTestFiles {
+	for _, filename := range files {
 		err = cps.ParseAndMixinFile(filename, verbose)
 		if err != nil {
 			return

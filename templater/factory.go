@@ -95,9 +95,12 @@ func (f *Factory) UpdateFuncs(funcs template.FuncMap) *Factory {
 
 // AddSubs 加载子模板
 func (f *Factory) AddSubs(tmpl *template.Template) *template.Template {
-	if f.inclSubFiles && tmpl != nil {
-		globPath := filepath.Join(f.discoverDir, "sub_*.tmpl")
-		tmpl, _ = tmpl.ParseGlob(globPath)
+	if f.inclSubFiles == false || tmpl == nil {
+		return tmpl
+	}
+	files, err := filepath.Glob(filepath.Join(f.discoverDir, "sub_*.tmpl"))
+	if err == nil && len(files) > 0 {
+		tmpl, _ = tmpl.ParseFiles(files...)
 	}
 	return tmpl
 }

@@ -44,7 +44,7 @@ const ( // 约定大于配置
 
 	XormTagName       = "xorm"
 	XormTagNotNull    = "notnull"
-	XormTagAutoIncr   = "autoincr"
+	XormTagAutoIncr   = "autoincr" // 自增主键，pgsql是serial，但这里无需区分
 	XormTagPrimaryKey = "pk"
 	XormTagUnique     = "unique"
 	XormTagIndex      = "index"
@@ -151,7 +151,7 @@ func sqlType2Type(st schemas.SQLType) (rtype reflect.Type, rtstr string) {
 		schemas.NText, schemas.MediumText, schemas.LongText:
 		rtstr = "xutils.NullString"
 		// case schemas.Char, schemas.NChar, schemas.Enum, schemas.Set, schemas.Uuid, schemas.Clob, schemas.SysName:
-		//	rtstr = rtype.String()2
+		//	rtstr = rtype.String()
 		// case schemas.Decimal, schemas.Numeric, schemas.Money, schemas.SmallMoney:
 		//	rtstr = rtype.String()
 	}
@@ -300,35 +300,17 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 	isIdPk := isNameId && type2string(col) == "int64"
 
 	var res []string
-	if !col.Nullable {
-		if !isIdPk {
-			res = append(res, XormTagNotNull)
-		}
+	if !col.Nullable && !isIdPk {
+		res = append(res, XormTagNotNull)
 	}
 	if col.IsPrimaryKey {
 		res = append(res, XormTagPrimaryKey)
 	}
-	if col.Default != "" {
-		res = append(res, "default "+col.Default)
-	}
 	if col.IsAutoIncrement {
 		res = append(res, XormTagAutoIncr)
 	}
-
-	if col.SQLType.IsTime() {
-		lowerName := strings.ToLower(col.Name)
-		if strings.HasPrefix(lowerName, "created") {
-			res = append(res, "created")
-		} else if strings.HasPrefix(lowerName, "updated") {
-			res = append(res, "updated")
-		} else if strings.HasPrefix(lowerName, "deleted") {
-			res = append(res, "deleted")
-		}
-	}
-
-	if comm := match.TruncateText(col.Comment, 50); comm != "" {
-		comm = template.HTMLEscapeString(comm) // 备注脱敏
-		res = append(res, fmt.Sprintf("comment('%s')", comm))
+	if col.Default != "" {
+		res = append(res, "default "+col.Default)
 	}
 
 	names := make([]string, 0, len(col.Indexes))
@@ -336,7 +318,6 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-
 	for _, name := range names {
 		index := table.Indexes[name]
 		var uistr string
@@ -351,7 +332,22 @@ func tagXorm(table *schemas.Table, col *schemas.Column) string {
 		res = append(res, uistr)
 	}
 
+	if col.SQLType.IsTime() {
+		lowerName := strings.ToLower(col.Name)
+		if strings.HasPrefix(lowerName, "created") {
+			res = append(res, "created")
+		} else if strings.HasPrefix(lowerName, "updated") {
+			res = append(res, "updated")
+		} else if strings.HasPrefix(lowerName, "deleted") {
+			res = append(res, "deleted")
+		}
+	}
+
 	res = append(res, GetColTypeString(col))
+	if comm := match.TruncateText(col.Comment, 50); comm != "" {
+		comm = template.HTMLEscapeString(comm) // 备注脱敏
+		res = append(res, fmt.Sprintf("comment('%s')", comm))
+	}
 	if len(res) > 0 {
 		tagValue := escapeTag(strings.Join(res, " ")) // 脱敏处理
 		return fmt.Sprintf(`%s:"%s"`, XormTagName, tagValue)

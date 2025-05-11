@@ -26,7 +26,7 @@ var args struct {
 	Skeleton   *skeletonCmd `arg:"subcommand:skeleton" help:"生成新项目"`
 	Config     string       `arg:"-c,--config" default:"settings.hcl" help:"配置文件路径"`
 	Verbose    bool         `arg:"-v,--verbose" help:"输出详细信息"`
-	IsInteract bool         `arg:"-i,--interact" default:false help:"交互模式"`
+	IsInteract bool         `arg:"-i,--interact" help:"交互模式"`
 }
 
 type prettyCmd struct {
@@ -38,7 +38,7 @@ type mixinCmd struct {
 
 type skeletonCmd struct {
 	BinName string `arg:"-b,--bin" default:"serv" help:"二进制文件名"`
-	IsForce bool   `arg:"-f,--force" default:false help:"覆盖文件"`
+	IsForce bool   `arg:"-f,--force" help:"覆盖文件"`
 }
 
 func init() {
@@ -66,7 +66,7 @@ func main() {
 	}
 	// models.PrepareConns(root)
 	if args.IsInteract { // 采用交互模式，确定或修改部分配置
-		if err := questions(settings); err != nil {
+		if err = questions(settings); err != nil {
 			fmt.Println("跳过，什么也没有做！")
 			return // 到此结束
 		}
@@ -80,28 +80,17 @@ func main() {
 	if skel = args.Skeleton; skel != nil {
 		_ = reverse.SkelProject(outputDir, nameSpace, skel.BinName, skel.IsForce)
 	}
+
 	rver := reverse.NewGoReverser(settings.Reverse)
 	// 生成顶部目录下init单个文件
-	if err := rver.GenModelInitFile("init"); err != nil {
+	if err = rver.GenModelInitFile("init"); err != nil {
 		panic(err)
 	}
-	var wg sync.WaitGroup
+	// 生成model和query
 	dbArgs := config.ReadArgs(true, nil)
-	for _, cfg := range settings.GetConns() {
-		if dbArgs.Size() > 0 && !dbArgs.Has(cfg.Key) {
-			continue
-		}
-		wg.Add(1)
-		go func(rver *reverse.Reverser, cfg dialect.ConnConfig) {
-			defer wg.Done()
-			err := reverseDb(rver, cfg)
-			if err != nil {
-				fmt.Println("xx", err)
-				panic(err)
-			}
-		}(rver.Clone(), cfg)
+	if err = reverseAll(rver, dbArgs, settings.GetConns()); err != nil {
+		panic(err)
 	}
-	wg.Wait()
 
 	fmt.Println("执行完成。")
 	if skel != nil {
@@ -121,12 +110,33 @@ func prettifyDir(dir string) {
 	}
 }
 
+func reverseAll(rver *reverse.Reverser, dbArgs *config.ArgList,
+	dbConfigs []dialect.ConnConfig) (err error) {
+	var wg sync.WaitGroup
+	for _, cfg := range dbConfigs {
+		if dbArgs.Size() > 0 && !dbArgs.Has(cfg.Key) {
+			continue
+		}
+		wg.Add(1)
+		go func(rver *reverse.Reverser, cfg dialect.ConnConfig) {
+			defer wg.Done()
+			err = reverseDb(rver, cfg)
+			if err != nil {
+				fmt.Println("xx", err)
+				panic(err)
+			}
+		}(rver.Clone(), cfg)
+	}
+	wg.Wait()
+	return
+}
+
 func reverseDb(rver *reverse.Reverser, cfg dialect.ConnConfig) (err error) {
 	currDir, isXorm := rver.SetOutDir(cfg.Key), true
 	if args.Mixin != nil { // 只进行Mixin嵌入
 		isXorm = cfg.LoadDialect().IsXormDriver()
 	} else { // 生成conn单个文件
-		isXorm, err = rver.ExecuteReverse(cfg, args.IsInteract, args.Verbose)
+		isXorm, err = rver.ExecuteReverse(cfg, args.Verbose)
 		if err != nil {
 			return
 		}

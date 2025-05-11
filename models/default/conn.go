@@ -1,10 +1,12 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/azhai/xgen/dialect"
 	"github.com/azhai/xgen/models"
 	xq "github.com/azhai/xgen/xquery"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	"xorm.io/xorm"
 )
 
@@ -23,7 +25,7 @@ func Engine() *xorm.Engine {
 	if engine == nil {
 		cfg := models.GetConnConfig("default")
 		engine = ConnectXorm(cfg)
-		// engine.Sync()
+		_ = SyncModels(engine)
 	}
 	return engine
 }
@@ -62,4 +64,12 @@ func UpdateBatch(tableName, pkey string, ids any, changes map[string]any) error 
 		return tx.Table(tableName).In(pkey, ids).Update(changes)
 	}
 	return xq.ExecTx(Engine(), modify)
+}
+
+// SyncModels 同步数据库表结构
+func SyncModels(eng *xorm.Engine) error {
+	if eng == nil {
+		return fmt.Errorf("the connection is lost")
+	}
+	return eng.Sync()
 }
